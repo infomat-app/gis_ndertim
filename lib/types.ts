@@ -11,6 +11,8 @@ export interface Profile {
   updated_at: string
 }
 
+export type PointStyle = 'circle' | 'square' | 'diamond' | 'triangle' | 'star' | 'cross'
+
 export interface Layer {
   id: string
   name: string
@@ -21,6 +23,7 @@ export interface Layer {
   opacity: number
   visible: boolean
   sort_order: number
+  point_style?: PointStyle | null
   created_by: string | null
   created_at: string
   updated_at: string

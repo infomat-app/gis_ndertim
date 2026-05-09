@@ -5,7 +5,7 @@ import {
   useMapEvents, useMap, Tooltip,
 } from 'react-leaflet'
 import L from 'leaflet'
-import type { Layer, Feature } from '@/lib/types'
+import type { Layer, Feature, PointStyle } from '@/lib/types'
 import BaseLayerControl from './BaseLayerControl'
 
 // Fix Leaflet default icon (CDN fallback for Next.js)
@@ -17,17 +17,31 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 })
 
-function dotIcon(color: string, selected = false) {
-  const size = selected ? 20 : 14
-  const style = selected
-    ? `width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 0 0 3px ${color},0 2px 10px rgba(0,0,0,.5)`
-    : `width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,.85);box-shadow:0 0 0 1.5px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.35)`
-  return L.divIcon({
-    className: '',
-    html: `<div style="${style}"></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  })
+function svgShape(color: string, style: PointStyle, sw: number): string {
+  switch (style) {
+    case 'square':
+      return `<rect x="1.5" y="1.5" width="13" height="13" rx="1.5" fill="${color}" stroke="white" stroke-width="${sw}"/>`
+    case 'diamond':
+      return `<polygon points="8,1 15,8 8,15 1,8" fill="${color}" stroke="white" stroke-width="${sw}"/>`
+    case 'triangle':
+      return `<polygon points="8,1.5 14.5,14.5 1.5,14.5" fill="${color}" stroke="white" stroke-width="${sw}" stroke-linejoin="round"/>`
+    case 'star':
+      return `<polygon points="8,1 9.76,5.57 14.66,5.84 10.85,8.93 12.11,13.66 8,11 3.89,13.66 5.15,8.93 1.34,5.84 6.24,5.57" fill="${color}" stroke="white" stroke-width="${sw}"/>`
+    case 'cross':
+      return `<path d="M5.5 1h5v4.5H15v5h-4.5V15h-5v-4.5H1v-5h4.5z" fill="${color}" stroke="white" stroke-width="${sw}" stroke-linejoin="round"/>`
+    default: // circle
+      return `<circle cx="8" cy="8" r="6.5" fill="${color}" stroke="white" stroke-width="${sw}"/>`
+  }
+}
+
+function pointIcon(color: string, style: PointStyle = 'circle', selected = false) {
+  const size = selected ? 22 : 16
+  const sw   = selected ? 2 : 1.5
+  const glow = selected
+    ? `filter:drop-shadow(0 0 5px ${color})drop-shadow(0 0 2px ${color})`
+    : `filter:drop-shadow(0 1px 3px rgba(0,0,0,0.45))`
+  const html = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 16 16" style="${glow}">${svgShape(color, style, sw)}</svg>`
+  return L.divIcon({ className: '', html, iconSize: [size, size], iconAnchor: [size / 2, size / 2] })
 }
 
 const gpsIcon = L.divIcon({
@@ -207,7 +221,7 @@ export default function MapView({
               <Marker
                 key={feat.id}
                 position={[lat, lng]}
-                icon={dotIcon(layer.color, isSelected)}
+                icon={pointIcon(layer.color, layer.point_style ?? 'circle', isSelected)}
                 zIndexOffset={isSelected ? 1000 : 0}
                 eventHandlers={{ click: () => onFeatureClick(feat) }}
               >

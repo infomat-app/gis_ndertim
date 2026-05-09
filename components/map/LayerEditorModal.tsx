@@ -1,6 +1,15 @@
 'use client'
-import { useState, useEffect } from 'react'
-import type { Layer, LayerField, GeomType, FieldType } from '@/lib/types'
+import React, { useState, useEffect } from 'react'
+import type { Layer, LayerField, GeomType, FieldType, PointStyle } from '@/lib/types'
+
+const POINT_STYLES: { id: PointStyle; label: string; preview: (c: string) => React.ReactNode }[] = [
+  { id: 'circle',   label: 'Rreth',       preview: c => <circle cx="8" cy="8" r="6.5" fill={c} stroke="white" strokeWidth="1.5"/> },
+  { id: 'square',   label: 'Katror',      preview: c => <rect x="1.5" y="1.5" width="13" height="13" rx="1.5" fill={c} stroke="white" strokeWidth="1.5"/> },
+  { id: 'diamond',  label: 'Diamant',     preview: c => <polygon points="8,1 15,8 8,15 1,8" fill={c} stroke="white" strokeWidth="1.5"/> },
+  { id: 'triangle', label: 'Trekëndësh', preview: c => <polygon points="8,1.5 14.5,14.5 1.5,14.5" fill={c} stroke="white" strokeWidth="1.5" strokeLinejoin="round"/> },
+  { id: 'star',     label: 'Yll',         preview: c => <polygon points="8,1 9.76,5.57 14.66,5.84 10.85,8.93 12.11,13.66 8,11 3.89,13.66 5.15,8.93 1.34,5.84 6.24,5.57" fill={c} stroke="white" strokeWidth="1"/> },
+  { id: 'cross',    label: 'Kryq',        preview: c => <path d="M5.5 1h5v4.5H15v5h-4.5V15h-5v-4.5H1v-5h4.5z" fill={c} stroke="white" strokeWidth="1" strokeLinejoin="round"/> },
+]
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'text',     label: 'Tekst' },
@@ -28,6 +37,7 @@ const blank: Omit<Layer, 'id'|'created_at'|'updated_at'> = {
   opacity: 0.8,
   visible: true,
   sort_order: 0,
+  point_style: 'circle',
   created_by: null,
 }
 
@@ -150,6 +160,33 @@ export default function LayerEditorModal({ layer, onSave, onClose }: Props) {
                     </div>
                   </div>
                 </div>
+
+                {/* Point style picker — visible only for Point geometry */}
+                {data.geom_type === 'Point' && (
+                  <div>
+                    <label className="block text-xs text-txt2 font-mono mb-2">Forma e pikës</label>
+                    <div className="grid grid-cols-6 gap-1.5">
+                      {POINT_STYLES.map(ps => {
+                        const active = (data.point_style ?? 'circle') === ps.id
+                        return (
+                          <button
+                            key={ps.id}
+                            type="button"
+                            onClick={() => set('point_style', ps.id)}
+                            className={`flex flex-col items-center gap-1 py-2 rounded-lg border transition-all ${
+                              active ? 'border-acc bg-acc/10' : 'border-b1 hover:border-b2 bg-s2'
+                            }`}
+                          >
+                            <svg width="20" height="20" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>
+                              {ps.preview(data.color)}
+                            </svg>
+                            <span className="text-[9px] font-mono text-txt3 leading-none">{ps.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
