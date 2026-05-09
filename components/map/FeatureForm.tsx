@@ -121,7 +121,7 @@ export default function FeatureForm({ layer, geomType, onSubmit, onCancel }: Pro
           <button
             onClick={fields.length === 0 ? () => onSubmit({}) : handleSubmit as unknown as React.MouseEventHandler}
             disabled={loading}
-            className="flex-1 py-2 rounded-lg bg-acc text-[#05101e] font-semibold text-xs hover:bg-[#3a9aff] disabled:opacity-50 transition-colors"
+            className="flex-1 py-2 rounded-lg bg-acc text-white font-semibold text-xs hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors"
           >
             {loading ? 'Duke ruajtur...' : 'Ruaj'}
           </button>

@@ -257,7 +257,7 @@ export default function LayerEditorModal({ layer, onSave, onClose }: Props) {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-2.5 rounded-xl bg-acc text-[#05101e] font-semibold text-sm hover:bg-[#3a9aff] disabled:opacity-50 transition-colors"
+              className="flex-1 py-2.5 rounded-xl bg-acc text-white font-semibold text-sm hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors"
             >
               {loading ? 'Duke ruajtur...' : layer ? 'Ruaj Ndryshimet' : 'Krijo Shtresën'}
             </button>

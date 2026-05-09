@@ -40,7 +40,7 @@ export default function Navbar({ profile }: { profile: Profile }) {
       {/* Brand */}
       <div className="flex items-center gap-2 mr-2">
         <div className="w-6 h-6 rounded bg-acc/20 border border-acc/40 flex items-center justify-center">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
             <circle cx="12" cy="9" r="2"/>
           </svg>
@@ -56,7 +56,7 @@ export default function Navbar({ profile }: { profile: Profile }) {
             href={l.href}
             className={`px-3 py-1 rounded-md text-xs font-mono transition-colors ${
               pathname.startsWith(l.href)
-                ? 'bg-acc text-[#05101e] font-semibold'
+                ? 'bg-acc text-white font-semibold'
                 : 'text-txt2 hover:text-txt hover:bg-s3'
             }`}
           >

@@ -288,7 +288,7 @@ export default function ImportModal({ layers, onImport, onCreateAndImport, onClo
                   onClick={() => setMode('new')}
                   className={`flex-1 py-2 rounded-lg text-xs font-mono transition-all ${
                     mode === 'new'
-                      ? 'bg-acc text-[#05101e] font-semibold'
+                      ? 'bg-acc text-white font-semibold'
                       : 'text-txt2 hover:text-txt'
                   }`}
                 >
@@ -298,7 +298,7 @@ export default function ImportModal({ layers, onImport, onCreateAndImport, onClo
                   onClick={() => setMode('existing')}
                   className={`flex-1 py-2 rounded-lg text-xs font-mono transition-all ${
                     mode === 'existing'
-                      ? 'bg-acc text-[#05101e] font-semibold'
+                      ? 'bg-acc text-white font-semibold'
                       : 'text-txt2 hover:text-txt'
                   }`}
                 >
@@ -404,7 +404,7 @@ export default function ImportModal({ layers, onImport, onCreateAndImport, onClo
             <button
               onClick={handleImport}
               disabled={loading || !preview.length || (mode === 'existing' && !targetLayer)}
-              className="flex-1 py-2.5 rounded-xl bg-acc text-[#05101e] font-semibold text-sm hover:bg-[#3a9aff] disabled:opacity-50 transition-colors"
+              className="flex-1 py-2.5 rounded-xl bg-acc text-white font-semibold text-sm hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors"
             >
               {loading ? 'Duke importuar...' : `Importo ${preview.length ? preview.length + ' objekte' : ''}`}
             </button>

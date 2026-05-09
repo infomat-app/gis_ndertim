@@ -60,7 +60,7 @@ export default function AdminPanel({ profile, initialUsers, initialLayers }: Pro
                 onClick={() => setTab(t.key as typeof tab)}
                 className={`px-4 py-2 rounded-lg text-xs font-mono transition-all ${
                   tab === t.key
-                    ? 'bg-acc text-[#05101e] font-semibold'
+                    ? 'bg-acc text-white font-semibold'
                     : 'text-txt2 hover:text-txt hover:bg-s3'
                 }`}
               >

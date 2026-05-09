@@ -110,10 +110,10 @@ export default function BaseLayerControl({ activeId, onChange }: Props) {
 
           {/* Dropdown panel — opens upward */}
           {open && (
-            <div className="absolute bottom-full right-0 mb-2 bg-[#0a1628] border border-[#28437a] rounded-2xl shadow-2xl overflow-hidden"
+            <div className="absolute bottom-full right-0 mb-2 bg-white border border-[#d4e2ff] rounded-2xl shadow-2xl overflow-hidden"
               style={{ width: 220 }}>
               <div className="px-3 pt-3 pb-2">
-                <p className="text-[10px] font-mono text-[#3a5a80] uppercase tracking-widest mb-2">
+                <p className="text-[10px] font-mono text-[#7a96c0] uppercase tracking-widest mb-2">
                   Harta Bazë
                 </p>
                 <div className="space-y-1">
@@ -125,12 +125,12 @@ export default function BaseLayerControl({ activeId, onChange }: Props) {
                         onClick={() => { onChange(bl.id); setOpen(false) }}
                         className={`w-full flex items-center gap-3 px-2 py-2 rounded-xl transition-all text-left ${
                           isActive
-                            ? 'bg-[#4da6ff]/15 border border-[#4da6ff]/40'
-                            : 'hover:bg-[#131f3a] border border-transparent'
+                            ? 'bg-[#2563eb]/10 border border-[#2563eb]/30'
+                            : 'hover:bg-[#eef3ff] border border-transparent'
                         }`}
                       >
                         {/* Tile preview image */}
-                        <div className="w-10 h-8 rounded-lg overflow-hidden shrink-0 border border-[#1f3460]">
+                        <div className="w-10 h-8 rounded-lg overflow-hidden shrink-0 border border-[#d4e2ff]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={PREVIEW_URL[bl.id]}
@@ -142,14 +142,14 @@ export default function BaseLayerControl({ activeId, onChange }: Props) {
                         </div>
 
                         <span className={`text-sm font-medium flex-1 ${
-                          isActive ? 'text-[#4da6ff]' : 'text-[#dce6f5]'
+                          isActive ? 'text-[#2563eb]' : 'text-[#0f1e3c]'
                         }`}>
                           {bl.label}
                         </span>
 
                         {isActive && (
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                            stroke="#4da6ff" strokeWidth="2.5" className="shrink-0">
+                            stroke="#2563eb" strokeWidth="2.5" className="shrink-0">
                             <polyline points="20 6 9 17 4 12"/>
                           </svg>
                         )}
@@ -166,12 +166,12 @@ export default function BaseLayerControl({ activeId, onChange }: Props) {
             onClick={() => setOpen(o => !o)}
             className={`flex items-center gap-2 pl-2 pr-3 py-2 rounded-xl shadow-lg border text-xs font-mono transition-all ${
               open
-                ? 'bg-[#0a1628] border-[#4da6ff]/60 text-[#4da6ff]'
-                : 'bg-[#0a1628]/95 backdrop-blur-sm border-[#1f3460] text-[#7a9fc4] hover:border-[#28437a] hover:text-[#dce6f5]'
+                ? 'bg-white border-[#2563eb]/50 text-[#2563eb]'
+                : 'bg-white/95 backdrop-blur-sm border-[#d4e2ff] text-[#3d5a8a] hover:border-[#d4e2ff] hover:text-[#0f1e3c]'
             }`}
           >
             {/* Active layer mini preview */}
-            <div className="w-7 h-5 rounded overflow-hidden border border-[#1f3460] shrink-0">
+            <div className="w-7 h-5 rounded overflow-hidden border border-[#d4e2ff] shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={PREVIEW_URL[activeId]}
