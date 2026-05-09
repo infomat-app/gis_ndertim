@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet core CSS */
+@import 'leaflet/dist/leaflet.css';
+
+html, body { height: 100%; }
+
+/* Fix leaflet z-index conflicts in Next.js */
+.leaflet-pane        { z-index: 1 !important; }
+.leaflet-top,
+.leaflet-bottom      { z-index: 10 !important; }
+.leaflet-control     { z-index: 10 !important; }
+.leaflet-marker-pane { z-index: 6 !important; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #253352; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #2e4068; }
+
+/* Leaflet popup override */
+.leaflet-popup-content-wrapper {
+  background: #0d1119;
+  color: #dce6f5;
+  border: 1px solid #253352;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.leaflet-popup-tip { background: #0d1119; }
+.leaflet-popup-close-button { color: #8da0bb !important; }
