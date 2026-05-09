@@ -55,13 +55,13 @@ export const BASE_LAYERS: BaseLayer[] = [
   },
 ]
 
-// Thumbnail preview colors for each layer
-const LAYER_THUMBS: Record<string, { bg: string; label: string }> = {
-  osm:              { bg: '#a8d5a2', label: 'OSM' },
-  google_streets:   { bg: '#e8e0d8', label: 'Map' },
-  google_satellite: { bg: '#2a4a2a', label: 'SAT' },
-  google_hybrid:    { bg: '#3a5a3a', label: 'HYB' },
-  google_terrain:   { bg: '#c8b870', label: 'TER' },
+// Small preview tile for each layer (fixed tile at z=6 for Albania area)
+const PREVIEW_URL: Record<string, string> = {
+  osm:              'https://tile.openstreetmap.org/6/37/23.png',
+  google_streets:   'https://mt0.google.com/vt/lyrs=m&x=37&y=23&z=6',
+  google_satellite: 'https://mt0.google.com/vt/lyrs=s&x=37&y=23&z=6',
+  google_hybrid:    'https://mt0.google.com/vt/lyrs=y&x=37&y=23&z=6',
+  google_terrain:   'https://mt0.google.com/vt/lyrs=p&x=37&y=23&z=6',
 }
 
 // Inner component: manages the single base tile layer imperatively
@@ -99,63 +99,96 @@ interface Props {
 
 export default function BaseLayerControl({ activeId, onChange }: Props) {
   const [open, setOpen] = useState(false)
+  const active = BASE_LAYERS.find(l => l.id === activeId)
 
   return (
     <>
       <TileUpdater activeId={activeId} />
 
-      {/* Control button — bottom-right of map */}
       <div className="absolute bottom-8 right-2 z-[1000]">
         <div className="relative flex flex-col items-end">
+
+          {/* Dropdown panel — opens upward */}
+          {open && (
+            <div className="absolute bottom-full right-0 mb-2 bg-[#0d1119] border border-[#2e4068] rounded-2xl shadow-2xl overflow-hidden"
+              style={{ width: 220 }}>
+              <div className="px-3 pt-3 pb-2">
+                <p className="text-[10px] font-mono text-[#3d5275] uppercase tracking-widest mb-2">
+                  Harta Bazë
+                </p>
+                <div className="space-y-1">
+                  {BASE_LAYERS.map(bl => {
+                    const isActive = bl.id === activeId
+                    return (
+                      <button
+                        key={bl.id}
+                        onClick={() => { onChange(bl.id); setOpen(false) }}
+                        className={`w-full flex items-center gap-3 px-2 py-2 rounded-xl transition-all text-left ${
+                          isActive
+                            ? 'bg-[#05d9a0]/15 border border-[#05d9a0]/40'
+                            : 'hover:bg-[#18202e] border border-transparent'
+                        }`}
+                      >
+                        {/* Tile preview image */}
+                        <div className="w-10 h-8 rounded-lg overflow-hidden shrink-0 border border-[#253352]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={PREVIEW_URL[bl.id]}
+                            alt={bl.label}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                          />
+                        </div>
+
+                        <span className={`text-sm font-medium flex-1 ${
+                          isActive ? 'text-[#05d9a0]' : 'text-[#dce6f5]'
+                        }`}>
+                          {bl.label}
+                        </span>
+
+                        {isActive && (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="#05d9a0" strokeWidth="2.5" className="shrink-0">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Toggle button */}
           <button
             onClick={() => setOpen(o => !o)}
-            className="flex items-center gap-2 px-3 py-2 bg-s1/95 backdrop-blur-sm border border-b2 rounded-xl shadow-lg text-xs font-mono text-txt2 hover:text-txt hover:border-b3 transition-colors"
-            title="Ndrysho hartën bazë"
+            className={`flex items-center gap-2 pl-2 pr-3 py-2 rounded-xl shadow-lg border text-xs font-mono transition-all ${
+              open
+                ? 'bg-[#0d1119] border-[#05d9a0]/60 text-[#05d9a0]'
+                : 'bg-[#0d1119]/95 backdrop-blur-sm border-[#253352] text-[#8da0bb] hover:border-[#2e4068] hover:text-[#dce6f5]'
+            }`}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
-              <line x1="9" y1="3" x2="9" y2="18"/>
-              <line x1="15" y1="6" x2="15" y2="21"/>
-            </svg>
-            <span>{BASE_LAYERS.find(l => l.id === activeId)?.label ?? 'Bazë'}</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            {/* Active layer mini preview */}
+            <div className="w-7 h-5 rounded overflow-hidden border border-[#253352] shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={PREVIEW_URL[activeId]}
+                alt=""
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+            </div>
+            <span>{active?.label ?? 'Bazë'}</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5"
+              className={`transition-transform ${open ? 'rotate-180' : ''}`}>
               <polyline points="6 9 12 15 18 9"/>
             </svg>
           </button>
 
-          {open && (
-            <div className="absolute bottom-full right-0 mb-1.5 bg-s1/98 backdrop-blur-sm border border-b1 rounded-xl shadow-2xl overflow-hidden w-48">
-              {BASE_LAYERS.map(bl => {
-                const thumb = LAYER_THUMBS[bl.id]
-                const active = bl.id === activeId
-                return (
-                  <button
-                    key={bl.id}
-                    onClick={() => { onChange(bl.id); setOpen(false) }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs font-mono transition-colors text-left ${
-                      active
-                        ? 'bg-acc/15 text-acc'
-                        : 'text-txt2 hover:bg-s3 hover:text-txt'
-                    }`}
-                  >
-                    {/* Mini thumbnail */}
-                    <div
-                      className="w-8 h-6 rounded shrink-0 flex items-center justify-center text-[8px] font-bold"
-                      style={{ background: thumb.bg, color: active ? '#fff' : '#333' }}
-                    >
-                      {thumb.label}
-                    </div>
-                    <span>{bl.label}</span>
-                    {active && (
-                      <svg className="ml-auto shrink-0" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
         </div>
       </div>
     </>
