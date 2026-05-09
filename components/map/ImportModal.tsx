@@ -5,6 +5,7 @@ import type { Layer } from '@/lib/types'
 interface Props {
   layers: Layer[]
   onImport: (layerId: string, features: GeoJSONFeature[]) => Promise<{ ok: number; err: number }>
+  onCreateAndImport: (name: string, geomType: string, color: string, features: GeoJSONFeature[]) => Promise<{ ok: number; err: number }>
   onClose: () => void
 }
 
@@ -114,11 +115,16 @@ async function parseFile(f: File): Promise<GeoJSONFeature[]> {
 
 // ---- Component ----
 
-export default function ImportModal({ layers, onImport, onClose }: Props) {
+const DEFAULT_COLORS = ['#e91e8c','#2d8bff','#05d9a0','#ffaa2e','#9b5fff','#ff4d6d','#00c8ff']
+
+export default function ImportModal({ layers, onImport, onCreateAndImport, onClose }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [file,        setFile]        = useState<File | null>(null)
   const [preview,     setPreview]     = useState<GeoJSONFeature[]>([])
+  const [mode,        setMode]        = useState<'existing'|'new'>('new')
   const [targetLayer, setTargetLayer] = useState('')
+  const [newName,     setNewName]     = useState('')
+  const [newColor,    setNewColor]    = useState('#e91e8c')
   const [loading,     setLoading]     = useState(false)
   const [result,      setResult]      = useState<{ ok: number; err: number } | null>(null)
   const [error,       setError]       = useState<string | null>(null)
@@ -126,6 +132,8 @@ export default function ImportModal({ layers, onImport, onClose }: Props) {
 
   const handleFile = async (f: File) => {
     setFile(f); setError(null); setPreview([]); setResult(null); setMatchedType(null)
+    // Pre-fill layer name from filename (strip extension)
+    setNewName(f.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' '))
     setLoading(true)
     try {
       const features = await parseFile(f)
@@ -141,15 +149,22 @@ export default function ImportModal({ layers, onImport, onClose }: Props) {
   }
 
   const handleImport = async () => {
-    if (!targetLayer || !preview.length) return
+    if (!preview.length) return
     setLoading(true)
-    const res = await onImport(targetLayer, preview)
+    let res: { ok: number; err: number }
+    if (mode === 'new') {
+      if (!newName.trim()) { setError('Shkruaj emrin e shtresës'); setLoading(false); return }
+      res = await onCreateAndImport(newName.trim(), matchedType ?? 'Point', newColor, preview)
+    } else {
+      if (!targetLayer) { setError('Zgjidh shtresën'); setLoading(false); return }
+      res = await onImport(targetLayer, preview)
+    }
     setResult(res)
     setLoading(false)
   }
 
-  const selectedLayer = layers.find(l => l.id === targetLayer)
-  const compatible    = !matchedType || !selectedLayer || selectedLayer.geom_type === matchedType
+  const selectedLayer  = layers.find(l => l.id === targetLayer)
+  const compatible     = !matchedType || !selectedLayer || selectedLayer.geom_type === matchedType
   const filteredLayers = layers.filter(l => !matchedType || l.geom_type === matchedType)
 
   return (
@@ -259,34 +274,102 @@ export default function ImportModal({ layers, onImport, onClose }: Props) {
             </div>
           )}
 
-          {/* Target layer */}
+          {/* Mode toggle + destination */}
           {preview.length > 0 && !loading && (
-            <div>
-              <label className="block text-xs text-txt2 font-mono mb-2">Importo tek shtresa:</label>
-              <select
-                value={targetLayer}
-                onChange={e => setTargetLayer(e.target.value)}
-                className="w-full bg-bg border border-b1 rounded-lg px-3 py-2.5 text-sm text-txt outline-none focus:border-acc transition-colors"
-              >
-                <option value="">— Zgjidh shtresën —</option>
-                {filteredLayers.map(l => (
-                  <option key={l.id} value={l.id}>{l.name} ({l.geom_type})</option>
-                ))}
-                {/* show incompatible too, with warning */}
-                {layers.filter(l => matchedType && l.geom_type !== matchedType).map(l => (
-                  <option key={l.id} value={l.id}>⚠ {l.name} ({l.geom_type})</option>
-                ))}
-              </select>
+            <div className="space-y-3">
+              {/* Toggle */}
+              <div className="flex bg-bg rounded-xl p-1 border border-b1">
+                <button
+                  onClick={() => setMode('new')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-mono transition-all ${
+                    mode === 'new'
+                      ? 'bg-acc text-[#021a10] font-semibold'
+                      : 'text-txt2 hover:text-txt'
+                  }`}
+                >
+                  + Shtresë e Re
+                </button>
+                <button
+                  onClick={() => setMode('existing')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-mono transition-all ${
+                    mode === 'existing'
+                      ? 'bg-acc text-[#021a10] font-semibold'
+                      : 'text-txt2 hover:text-txt'
+                  }`}
+                >
+                  Shtresë Ekzistuese
+                </button>
+              </div>
 
-              {filteredLayers.length === 0 && (
-                <p className="text-xs text-warn font-mono mt-1">
-                  Nuk ka shtresa të tipit {matchedType}. Krijo shtresë të re fillimisht.
-                </p>
+              {/* NEW layer form */}
+              {mode === 'new' && (
+                <div className="bg-s2 border border-b1 rounded-xl p-4 space-y-3">
+                  <div>
+                    <label className="block text-xs text-txt2 font-mono mb-1.5">Emri i shtresës *</label>
+                    <input
+                      value={newName}
+                      onChange={e => setNewName(e.target.value)}
+                      className="w-full bg-bg border border-b1 rounded-lg px-3 py-2 text-sm text-txt outline-none focus:border-acc transition-colors"
+                      placeholder="p.sh. Kantiere_Ndertimi"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-txt2 font-mono mb-1.5">Ngjyra</label>
+                    <div className="flex gap-2 items-center flex-wrap">
+                      {DEFAULT_COLORS.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setNewColor(c)}
+                          className={`w-7 h-7 rounded-full transition-transform hover:scale-110 ${
+                            newColor === c ? 'ring-2 ring-white ring-offset-1 ring-offset-bg scale-110' : ''
+                          }`}
+                          style={{ background: c }}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={newColor}
+                        onChange={e => setNewColor(e.target.value)}
+                        className="w-7 h-7 rounded-full cursor-pointer border-0 bg-transparent"
+                        title="Ngjyrë tjetër"
+                      />
+                    </div>
+                  </div>
+                  {matchedType && (
+                    <p className="text-[10px] text-txt3 font-mono">
+                      Tipi: <span className="text-acc2">{matchedType}</span> · {preview.length} objekte
+                    </p>
+                  )}
+                </div>
               )}
-              {!compatible && selectedLayer && (
-                <p className="text-xs text-warn font-mono mt-1">
-                  ⚠ Tipi nuk përputhet: skedari ka {matchedType}, shtresa pret {selectedLayer.geom_type}
-                </p>
+
+              {/* EXISTING layer selector */}
+              {mode === 'existing' && (
+                <div>
+                  <select
+                    value={targetLayer}
+                    onChange={e => setTargetLayer(e.target.value)}
+                    className="w-full bg-bg border border-b1 rounded-lg px-3 py-2.5 text-sm text-txt outline-none focus:border-acc transition-colors"
+                  >
+                    <option value="">— Zgjidh shtresën —</option>
+                    {filteredLayers.map(l => (
+                      <option key={l.id} value={l.id}>{l.name} ({l.geom_type})</option>
+                    ))}
+                    {layers.filter(l => matchedType && l.geom_type !== matchedType).map(l => (
+                      <option key={l.id} value={l.id}>⚠ {l.name} ({l.geom_type})</option>
+                    ))}
+                  </select>
+                  {filteredLayers.length === 0 && (
+                    <p className="text-xs text-warn font-mono mt-1">
+                      Nuk ka shtresa të tipit {matchedType}.
+                    </p>
+                  )}
+                  {!compatible && selectedLayer && (
+                    <p className="text-xs text-warn font-mono mt-1">
+                      ⚠ Tipi nuk përputhet: {matchedType} → {selectedLayer.geom_type}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}

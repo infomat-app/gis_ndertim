@@ -251,23 +251,41 @@ export default function MapPage({ profile, initialLayers }: Props) {
           onClose={() => setShowImport(false)}
           onImport={async (layerId, geojsonFeatures) => {
             let ok = 0, err = 0
-            const layer = layers.find(l => l.id === layerId)
-            if (!layer) return { ok, err: geojsonFeatures.length }
-            // Insert in batches of 100
             for (let i = 0; i < geojsonFeatures.length; i += 100) {
               const batch = geojsonFeatures.slice(i, i + 100).map((f: GeoJSONFeature) => ({
-                layer_id: layerId,
-                geometry: f.geometry,
-                properties: f.properties ?? {},
-                created_by: profile.id,
+                layer_id: layerId, geometry: f.geometry,
+                properties: f.properties ?? {}, created_by: profile.id,
               }))
               const { data, error } = await supabase.from('features').insert(batch).select()
-              if (error) { err += batch.length } else { ok += data?.length ?? 0 }
+              if (error) err += batch.length; else ok += data?.length ?? 0
             }
-            // Refresh features for this layer
             const { data: fresh } = await supabase
               .from('features').select('*, profile:profiles(full_name,email)').eq('layer_id', layerId)
             if (fresh) setFeatures(prev => ({ ...prev, [layerId]: fresh }))
+            return { ok, err }
+          }}
+          onCreateAndImport={async (name, geomType, color, geojsonFeatures) => {
+            // 1. Create new layer
+            const { data: newLayer, error: layerErr } = await supabase
+              .from('layers')
+              .insert({ name, geom_type: geomType, color, fill_color: color, created_by: profile.id, visible: true, opacity: 0.8, sort_order: layers.length })
+              .select().single()
+            if (layerErr || !newLayer) return { ok: 0, err: geojsonFeatures.length }
+            setLayers(prev => [...prev, { ...newLayer, fields: [] }])
+            // 2. Import features
+            let ok = 0, err = 0
+            for (let i = 0; i < geojsonFeatures.length; i += 100) {
+              const batch = geojsonFeatures.slice(i, i + 100).map((f: GeoJSONFeature) => ({
+                layer_id: newLayer.id, geometry: f.geometry,
+                properties: f.properties ?? {}, created_by: profile.id,
+              }))
+              const { data, error: fErr } = await supabase.from('features').insert(batch).select()
+              if (fErr) err += batch.length; else ok += data?.length ?? 0
+            }
+            setFeatures(prev => {
+              const all = geojsonFeatures.map((f, i) => ({ id: `tmp-${i}`, layer_id: newLayer.id, geometry: f.geometry as GeoJSONGeometry, properties: f.properties ?? {}, created_by: profile.id, created_at: '', updated_at: '' }))
+              return { ...prev, [newLayer.id]: all }
+            })
             return { ok, err }
           }}
         />
