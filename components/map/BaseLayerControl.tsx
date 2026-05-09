@@ -64,7 +64,7 @@ const LAYER_THUMBS: Record<string, { bg: string; label: string }> = {
   google_terrain:   { bg: '#c8b870', label: 'TER' },
 }
 
-// Inner component: updates the Leaflet tile layer when activeId changes
+// Inner component: manages the single base tile layer imperatively
 function TileUpdater({ activeId }: { activeId: string }) {
   const map     = useMap()
   const tileRef = useRef<L.TileLayer | null>(null)
@@ -73,23 +73,20 @@ function TileUpdater({ activeId }: { activeId: string }) {
     const bl = BASE_LAYERS.find(l => l.id === activeId)
     if (!bl) return
 
-    // Remove old base tile layer
-    if (tileRef.current) {
-      map.removeLayer(tileRef.current)
-    }
+    // Remove ALL existing tile layers (including the react-leaflet TileLayer)
+    map.eachLayer(layer => {
+      if (layer instanceof L.TileLayer) map.removeLayer(layer)
+    })
 
-    // Add new base tile layer at the bottom
     const layer = L.tileLayer(bl.url, {
       attribution: bl.attribution,
       maxZoom: bl.maxZoom ?? 19,
       subdomains: bl.subdomains ?? 'abc',
+      crossOrigin: true,
     })
     layer.addTo(map)
-    layer.setZIndex(0)
-    tileRef.current = layer
-
-    // Push to bottom so GIS layers stay on top
     layer.bringToBack()
+    tileRef.current = layer
   }, [activeId, map])
 
   return null
@@ -107,9 +104,9 @@ export default function BaseLayerControl({ activeId, onChange }: Props) {
     <>
       <TileUpdater activeId={activeId} />
 
-      {/* Control button — top-left of map */}
-      <div className="absolute top-2 left-2 z-[1000]">
-        <div className="relative">
+      {/* Control button — bottom-right of map */}
+      <div className="absolute bottom-8 right-2 z-[1000]">
+        <div className="relative flex flex-col items-end">
           <button
             onClick={() => setOpen(o => !o)}
             className="flex items-center gap-2 px-3 py-2 bg-s1/95 backdrop-blur-sm border border-b2 rounded-xl shadow-lg text-xs font-mono text-txt2 hover:text-txt hover:border-b3 transition-colors"
@@ -127,7 +124,7 @@ export default function BaseLayerControl({ activeId, onChange }: Props) {
           </button>
 
           {open && (
-            <div className="absolute top-full left-0 mt-1.5 bg-s1/98 backdrop-blur-sm border border-b1 rounded-xl shadow-2xl overflow-hidden w-48">
+            <div className="absolute bottom-full right-0 mb-1.5 bg-s1/98 backdrop-blur-sm border border-b1 rounded-xl shadow-2xl overflow-hidden w-48">
               {BASE_LAYERS.map(bl => {
                 const thumb = LAYER_THUMBS[bl.id]
                 const active = bl.id === activeId

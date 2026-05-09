@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useCallback, useState } from 'react'
 import {
-  MapContainer, TileLayer, Marker, Polyline, Polygon,
+  MapContainer, Marker, Polyline, Polygon,
   useMapEvents, useMap, Tooltip,
 } from 'react-leaflet'
 import L from 'leaflet'
@@ -135,13 +135,6 @@ export default function MapView({
       doubleClickZoom={false}
       zoomControl={true}
     >
-      {/* Initial OSM tile (replaced by BaseLayerControl after mount) */}
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; OpenStreetMap'
-        maxZoom={19}
-      />
-
       <BaseLayerControl activeId={baseLayerId} onChange={setBaseLayerId} />
 
       {/* Render features per visible layer */}
