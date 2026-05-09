@@ -151,15 +151,20 @@ export default function ImportModal({ layers, onImport, onCreateAndImport, onClo
   const handleImport = async () => {
     if (!preview.length) return
     setLoading(true)
-    let res: { ok: number; err: number }
-    if (mode === 'new') {
-      if (!newName.trim()) { setError('Shkruaj emrin e shtresës'); setLoading(false); return }
-      res = await onCreateAndImport(newName.trim(), matchedType ?? 'Point', newColor, preview)
-    } else {
-      if (!targetLayer) { setError('Zgjidh shtresën'); setLoading(false); return }
-      res = await onImport(targetLayer, preview)
+    setError(null)
+    try {
+      let res: { ok: number; err: number }
+      if (mode === 'new') {
+        if (!newName.trim()) { setError('Shkruaj emrin e shtresës'); setLoading(false); return }
+        res = await onCreateAndImport(newName.trim(), matchedType ?? 'Point', newColor, preview)
+      } else {
+        if (!targetLayer) { setError('Zgjidh shtresën'); setLoading(false); return }
+        res = await onImport(targetLayer, preview)
+      }
+      setResult(res)
+    } catch (e) {
+      setError(String(e instanceof Error ? e.message : e))
     }
-    setResult(res)
     setLoading(false)
   }
 
@@ -398,7 +403,7 @@ export default function ImportModal({ layers, onImport, onCreateAndImport, onClo
           {!result && (
             <button
               onClick={handleImport}
-              disabled={!targetLayer || !preview.length || loading}
+              disabled={loading || !preview.length || (mode === 'existing' && !targetLayer)}
               className="flex-1 py-2.5 rounded-xl bg-acc text-[#021a10] font-semibold text-sm hover:bg-[#04c490] disabled:opacity-50 transition-colors"
             >
               {loading ? 'Duke importuar...' : `Importo ${preview.length ? preview.length + ' objekte' : ''}`}

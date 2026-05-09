@@ -270,7 +270,10 @@ export default function MapPage({ profile, initialLayers }: Props) {
               .from('layers')
               .insert({ name, geom_type: geomType, color, fill_color: color, created_by: profile.id, visible: true, opacity: 0.8, sort_order: layers.length })
               .select().single()
-            if (layerErr || !newLayer) return { ok: 0, err: geojsonFeatures.length }
+            if (layerErr || !newLayer) {
+              console.error('Layer insert error:', layerErr)
+              throw new Error(layerErr?.message ?? 'Nuk u krijua shtresa (kontrollo rolin në Supabase)')
+            }
             setLayers(prev => [...prev, { ...newLayer, fields: [] }])
             // 2. Import features
             let ok = 0, err = 0
