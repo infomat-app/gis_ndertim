@@ -9,6 +9,7 @@ import DrawToolbar from './DrawToolbar'
 import FeatureForm from './FeatureForm'
 import FeatureDetail from './FeatureDetail'
 import LayerEditorModal from './LayerEditorModal'
+import ImportModal, { type GeoJSONFeature } from './ImportModal'
 
 const MapView = dynamic(() => import('./MapView'), {
   ssr: false,
@@ -38,6 +39,7 @@ export default function MapPage({ profile, initialLayers }: Props) {
   const [showFeatureForm, setShowFeatureForm] = useState(false)
   const [showLayerEditor, setShowLayerEditor] = useState(false)
   const [editingLayer,    setEditingLayer]   = useState<Layer | null>(null)
+  const [showImport,      setShowImport]     = useState(false)
   const [sidebarOpen,     setSidebarOpen]    = useState(true)
   const [gpsRequest,      setGpsRequest]     = useState(0)
 
@@ -186,6 +188,7 @@ export default function MapPage({ profile, initialLayers }: Props) {
           activeLayer={activeLayer}
           canEdit={canEdit}
           isAdmin={isAdmin}
+          onImport={() => setShowImport(true)}
           onToggle={() => setSidebarOpen(o => !o)}
           onSelectLayer={l => { setActiveLayer(a => a?.id === l.id ? null : l); setDrawingCoords([]) }}
           onToggleVisibility={(id, v) => setLayers(prev => prev.map(l => l.id === id ? { ...l, visible: v } : l))}
@@ -239,6 +242,34 @@ export default function MapPage({ profile, initialLayers }: Props) {
           geomType={pendingGeom.type}
           onSubmit={handleFeatureSubmit}
           onCancel={() => { setShowFeatureForm(false); setPendingGeom(null) }}
+        />
+      )}
+
+      {showImport && (
+        <ImportModal
+          layers={layers}
+          onClose={() => setShowImport(false)}
+          onImport={async (layerId, geojsonFeatures) => {
+            let ok = 0, err = 0
+            const layer = layers.find(l => l.id === layerId)
+            if (!layer) return { ok, err: geojsonFeatures.length }
+            // Insert in batches of 100
+            for (let i = 0; i < geojsonFeatures.length; i += 100) {
+              const batch = geojsonFeatures.slice(i, i + 100).map((f: GeoJSONFeature) => ({
+                layer_id: layerId,
+                geometry: f.geometry,
+                properties: f.properties ?? {},
+                created_by: profile.id,
+              }))
+              const { data, error } = await supabase.from('features').insert(batch).select()
+              if (error) { err += batch.length } else { ok += data?.length ?? 0 }
+            }
+            // Refresh features for this layer
+            const { data: fresh } = await supabase
+              .from('features').select('*, profile:profiles(full_name,email)').eq('layer_id', layerId)
+            if (fresh) setFeatures(prev => ({ ...prev, [layerId]: fresh }))
+            return { ok, err }
+          }}
         />
       )}
 

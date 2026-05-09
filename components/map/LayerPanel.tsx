@@ -20,12 +20,13 @@ interface Props {
   onAddLayer: () => void
   onEditLayer: (l: Layer) => void
   onDeleteLayer: (id: string) => void
+  onImport: () => void
 }
 
 export default function LayerPanel({
   open, layers, activeLayer, canEdit, isAdmin,
   onToggle, onSelectLayer, onToggleVisibility,
-  onAddLayer, onEditLayer, onDeleteLayer,
+  onAddLayer, onEditLayer, onDeleteLayer, onImport,
 }: Props) {
   const [hoverId, setHoverId] = useState<string | null>(null)
 
@@ -58,9 +59,9 @@ export default function LayerPanel({
 
       {open && (
         <>
-          {/* Add layer button */}
+          {/* Add layer + Import buttons */}
           {canEdit && (
-            <div className="p-2 border-b border-b1">
+            <div className="p-2 border-b border-b1 space-y-1.5">
               <button
                 onClick={onAddLayer}
                 className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-acc/10 border border-acc/30 text-acc text-xs font-mono hover:bg-acc/20 transition-colors"
@@ -69,6 +70,16 @@ export default function LayerPanel({
                   <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
                 Shto Shtresë
+              </button>
+              <button
+                onClick={onImport}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-acc2/10 border border-acc2/30 text-acc2 text-xs font-mono hover:bg-acc2/20 transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Import (GeoJSON/CSV/KML/SHP)
               </button>
             </div>
           )}
