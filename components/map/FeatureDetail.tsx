@@ -78,9 +78,15 @@ export default function FeatureDetail({ feature, layer, canEdit, onClose, onDele
 
       {/* Properties */}
       <div className="p-3 space-y-2 flex-1 overflow-y-auto max-h-80">
-        {fields.length === 0 && (
+        {fields.length === 0 && Object.keys(feature.properties ?? {}).length === 0 && (
           <p className="text-xs text-txt3 font-mono text-center py-2">Nuk ka fusha.</p>
         )}
+        {fields.length === 0 && Object.entries(feature.properties ?? {}).map(([k, v]) => (
+          <div key={k}>
+            <label className="text-[10px] text-txt3 font-mono uppercase tracking-wide">{k}</label>
+            <p className="text-xs text-txt mt-0.5 font-mono break-all">{String(v ?? '—')}</p>
+          </div>
+        ))}
         {fields.sort((a, b) => a.sort_order - b.sort_order).map(f => (
           <div key={f.id}>
             <label className="text-[10px] text-txt3 font-mono uppercase tracking-wide">{f.field_label}</label>

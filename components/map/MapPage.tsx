@@ -274,8 +274,19 @@ export default function MapPage({ profile, initialLayers }: Props) {
               console.error('Layer insert error:', layerErr)
               throw new Error(layerErr?.message ?? 'Nuk u krijua shtresa (kontrollo rolin në Supabase)')
             }
-            setLayers(prev => [...prev, { ...newLayer, fields: [] }])
-            // 2. Import features
+            // 2. Auto-create layer_fields from first feature's properties
+            const firstProps = geojsonFeatures[0]?.properties ?? {}
+            const autoFields = Object.entries(firstProps).map(([key, val], i) => ({
+              layer_id: newLayer.id,
+              field_name: key,
+              field_label: key,
+              field_type: typeof val === 'number' ? 'number' : typeof val === 'boolean' ? 'boolean' : 'text',
+              required: false,
+              field_options: null,
+              sort_order: i,
+            }))
+            if (autoFields.length) await supabase.from('layer_fields').insert(autoFields)
+            // 3. Import features
             let ok = 0, err = 0
             for (let i = 0; i < geojsonFeatures.length; i += 100) {
               const batch = geojsonFeatures.slice(i, i + 100).map((f: GeoJSONFeature) => ({
@@ -285,6 +296,10 @@ export default function MapPage({ profile, initialLayers }: Props) {
               const { data, error: fErr } = await supabase.from('features').insert(batch).select()
               if (fErr) err += batch.length; else ok += data?.length ?? 0
             }
+            // 4. Reload layers with fields
+            const { data: freshLayers } = await supabase
+              .from('layers').select('*, fields:layer_fields(*)').order('sort_order')
+            if (freshLayers) setLayers(freshLayers)
             setFeatures(prev => {
               const all = geojsonFeatures.map((f, i) => ({ id: `tmp-${i}`, layer_id: newLayer.id, geometry: f.geometry as GeoJSONGeometry, properties: f.properties ?? {}, created_by: profile.id, created_at: '', updated_at: '' }))
               return { ...prev, [newLayer.id]: all }
