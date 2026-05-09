@@ -246,6 +246,7 @@ export default function MapPage({ profile }: Props) {
             gpsRequest={gpsRequest}
             zoomToLayerId={zoomRequest}
             zoomToFeature={zoomFeature}
+            selectedFeatureId={selectedFeature?.id}
             onZoomDone={() => { setZoomRequest(null); setZoomFeature(null) }}
             onMapClick={handleMapClick}
             onMapDblClick={handleMapDblClick}
@@ -266,6 +267,7 @@ export default function MapPage({ profile }: Props) {
           {/* Feature detail panel */}
           {selectedFeature && (
             <FeatureDetail
+              key={selectedFeature.id}
               feature={selectedFeature}
               layer={layers.find(l => l.id === selectedFeature.layer_id)!}
               canEdit={canEdit}

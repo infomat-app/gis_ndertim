@@ -17,10 +17,14 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 })
 
-function dotIcon(color: string, size = 14) {
+function dotIcon(color: string, selected = false) {
+  const size = selected ? 20 : 14
+  const style = selected
+    ? `width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 0 0 3px ${color},0 2px 10px rgba(0,0,0,.5)`
+    : `width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,.85);box-shadow:0 0 0 1.5px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.35)`
   return L.divIcon({
     className: '',
-    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,.85);box-shadow:0 0 0 1.5px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.35)"></div>`,
+    html: `<div style="${style}"></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   })
@@ -162,6 +166,7 @@ interface Props {
   gpsRequest: number
   zoomToLayerId: string | null
   zoomToFeature: Feature | null
+  selectedFeatureId?: string | null
   onZoomDone: () => void
   onMapClick: (lat: number, lng: number) => void
   onMapDblClick: () => void
@@ -171,8 +176,8 @@ interface Props {
 
 export default function MapView({
   layers, features, activeLayer, drawingCoords,
-  gpsRequest, zoomToLayerId, zoomToFeature, onZoomDone,
-  onMapClick, onMapDblClick, onGPSCapture, onFeatureClick,
+  gpsRequest, zoomToLayerId, zoomToFeature, selectedFeatureId,
+  onZoomDone, onMapClick, onMapDblClick, onGPSCapture, onFeatureClick,
 }: Props) {
 
   const [baseLayerId, setBaseLayerId] = useState('osm')
@@ -195,13 +200,15 @@ export default function MapView({
       {/* Render features per visible layer */}
       {layers.filter(l => l.visible).map(layer =>
         (features[layer.id] ?? []).map(feat => {
+          const isSelected = feat.id === selectedFeatureId
           if (layer.geom_type === 'Point') {
             const [lng, lat] = feat.geometry.coordinates as [number, number]
             return (
               <Marker
                 key={feat.id}
                 position={[lat, lng]}
-                icon={dotIcon(layer.color)}
+                icon={dotIcon(layer.color, isSelected)}
+                zIndexOffset={isSelected ? 1000 : 0}
                 eventHandlers={{ click: () => onFeatureClick(feat) }}
               >
                 <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
@@ -216,9 +223,9 @@ export default function MapView({
               <Polyline
                 key={feat.id}
                 positions={pos}
-                color={layer.color}
-                weight={3}
-                opacity={layer.opacity}
+                color={isSelected ? '#f59e0b' : layer.color}
+                weight={isSelected ? 5 : 3}
+                opacity={isSelected ? 1 : layer.opacity}
                 eventHandlers={{ click: () => onFeatureClick(feat) }}
               >
                 <Tooltip sticky>{getFirstProp(feat)}</Tooltip>
@@ -232,10 +239,10 @@ export default function MapView({
               <Polygon
                 key={feat.id}
                 positions={ring}
-                color={layer.color}
-                fillColor={layer.fill_color}
-                fillOpacity={layer.opacity * 0.4}
-                weight={2}
+                color={isSelected ? '#f59e0b' : layer.color}
+                fillColor={isSelected ? '#f59e0b' : layer.fill_color}
+                fillOpacity={isSelected ? 0.45 : layer.opacity * 0.4}
+                weight={isSelected ? 3 : 2}
                 eventHandlers={{ click: () => onFeatureClick(feat) }}
               >
                 <Tooltip sticky>{getFirstProp(feat)}</Tooltip>
