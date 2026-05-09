@@ -102,6 +102,25 @@ function ZoomToLayer({
   return null
 }
 
+// ---- Zoom to single feature ----
+function ZoomToFeature({ feature, onDone }: { feature: Feature | null; onDone: () => void }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!feature) return
+    const latlngs: [number, number][] = []
+    const flatten = (c: unknown): void => {
+      if (Array.isArray(c) && typeof c[0] === 'number') latlngs.push([c[1] as number, c[0] as number])
+      else if (Array.isArray(c)) c.forEach(flatten)
+    }
+    flatten(feature.geometry.coordinates)
+    if (latlngs.length === 1) map.flyTo(latlngs[0], 17, { duration: 1 })
+    else if (latlngs.length > 1) map.fitBounds(latlngs, { padding: [60, 60], maxZoom: 18, animate: true })
+    onDone()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feature])
+  return null
+}
+
 // ---- GPS fly-to ----
 function GPSHandler({
   gpsRequest,
@@ -142,6 +161,7 @@ interface Props {
   drawingCoords: [number, number][]
   gpsRequest: number
   zoomToLayerId: string | null
+  zoomToFeature: Feature | null
   onZoomDone: () => void
   onMapClick: (lat: number, lng: number) => void
   onMapDblClick: () => void
@@ -151,7 +171,7 @@ interface Props {
 
 export default function MapView({
   layers, features, activeLayer, drawingCoords,
-  gpsRequest, zoomToLayerId, onZoomDone,
+  gpsRequest, zoomToLayerId, zoomToFeature, onZoomDone,
   onMapClick, onMapDblClick, onGPSCapture, onFeatureClick,
 }: Props) {
 
@@ -259,6 +279,7 @@ export default function MapView({
       />
       <GPSHandler gpsRequest={gpsRequest} onCapture={onGPSCapture} />
       <ZoomToLayer layerId={zoomToLayerId} features={features} onDone={onZoomDone} />
+      <ZoomToFeature feature={zoomToFeature} onDone={onZoomDone} />
     </MapContainer>
   )
 }

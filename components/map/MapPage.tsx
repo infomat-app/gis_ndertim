@@ -45,6 +45,14 @@ export default function MapPage({ profile }: Props) {
   const [gpsRequest,      setGpsRequest]     = useState(0)
   const [attrLayer,       setAttrLayer]      = useState<Layer | null>(null)
   const [zoomRequest,     setZoomRequest]    = useState<string | null>(null)
+  const [zoomFeature,     setZoomFeature]    = useState<Feature | null>(null)
+
+  // Escape closes attribute table
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setAttrLayer(null) }
+    document.addEventListener('keydown', h)
+    return () => document.removeEventListener('keydown', h)
+  }, [])
 
   // Load layers client-side (avoids SSR/CDN caching issues)
   useEffect(() => {
@@ -237,7 +245,8 @@ export default function MapPage({ profile }: Props) {
             drawingCoords={drawingCoords}
             gpsRequest={gpsRequest}
             zoomToLayerId={zoomRequest}
-            onZoomDone={() => setZoomRequest(null)}
+            zoomToFeature={zoomFeature}
+            onZoomDone={() => { setZoomRequest(null); setZoomFeature(null) }}
             onMapClick={handleMapClick}
             onMapDblClick={handleMapDblClick}
             onGPSCapture={handleGPSCapture}
@@ -355,6 +364,9 @@ export default function MapPage({ profile }: Props) {
           layer={attrLayer}
           features={features[attrLayer.id] ?? []}
           onClose={() => setAttrLayer(null)}
+          onSelectFeature={f => setSelectedFeature(f)}
+          onZoomToFeature={f => setZoomFeature(f)}
+          onDeleteFeature={handleFeatureDelete}
         />
       )}
     </div>
