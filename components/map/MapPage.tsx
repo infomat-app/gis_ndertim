@@ -22,15 +22,14 @@ const MapView = dynamic(() => import('./MapView'), {
 
 interface Props {
   profile: Profile
-  initialLayers: Layer[]
 }
 
-export default function MapPage({ profile, initialLayers }: Props) {
+export default function MapPage({ profile }: Props) {
   const supabase  = createClient()
   const canEdit   = ['admin','editor'].includes(profile.role)
   const isAdmin   = profile.role === 'admin'
 
-  const [layers,          setLayers]         = useState<Layer[]>(initialLayers)
+  const [layers,          setLayers]         = useState<Layer[]>([])
   const [features,        setFeatures]       = useState<Record<string, Feature[]>>({})
   const [activeLayer,     setActiveLayer]    = useState<Layer | null>(null)
   const [drawingCoords,   setDrawingCoords]  = useState<[number, number][]>([])
@@ -42,6 +41,16 @@ export default function MapPage({ profile, initialLayers }: Props) {
   const [showImport,      setShowImport]     = useState(false)
   const [sidebarOpen,     setSidebarOpen]    = useState(true)
   const [gpsRequest,      setGpsRequest]     = useState(0)
+
+  // Load layers client-side (avoids SSR/CDN caching issues)
+  useEffect(() => {
+    supabase
+      .from('layers')
+      .select('*, fields:layer_fields(*)')
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => { if (data) setLayers(data) })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Load features for visible layers
   useEffect(() => {
