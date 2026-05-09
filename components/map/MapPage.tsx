@@ -10,6 +10,8 @@ import FeatureForm from './FeatureForm'
 import FeatureDetail from './FeatureDetail'
 import LayerEditorModal from './LayerEditorModal'
 import ImportModal, { type GeoJSONFeature } from './ImportModal'
+import AttributeTableModal from './AttributeTableModal'
+import { exportGeoJSON, exportCSV, exportXLS, exportKML, exportShapefile } from '@/lib/exports'
 
 const MapView = dynamic(() => import('./MapView'), {
   ssr: false,
@@ -41,6 +43,8 @@ export default function MapPage({ profile }: Props) {
   const [showImport,      setShowImport]     = useState(false)
   const [sidebarOpen,     setSidebarOpen]    = useState(true)
   const [gpsRequest,      setGpsRequest]     = useState(0)
+  const [attrLayer,       setAttrLayer]      = useState<Layer | null>(null)
+  const [zoomRequest,     setZoomRequest]    = useState<string | null>(null)
 
   // Load layers client-side (avoids SSR/CDN caching issues)
   useEffect(() => {
@@ -174,11 +178,24 @@ export default function MapPage({ profile }: Props) {
   }
 
   const handleLayerDelete = async (layerId: string) => {
-    if (!confirm('Fshi shtresën dhe të gjitha objektet e saj?')) return
     await supabase.from('layers').delete().eq('id', layerId)
     setLayers(prev => prev.filter(l => l.id !== layerId))
     if (activeLayer?.id === layerId) setActiveLayer(null)
     setFeatures(prev => { const n = { ...prev }; delete n[layerId]; return n })
+  }
+
+  const handleRename = async (layer: Layer) => {
+    await supabase.from('layers').update({ name: layer.name }).eq('id', layer.id)
+    setLayers(prev => prev.map(l => l.id === layer.id ? { ...l, name: layer.name } : l))
+  }
+
+  const handleExport = async (layer: Layer, format: 'geojson' | 'csv' | 'xls' | 'kml' | 'shp') => {
+    const feats = features[layer.id] ?? []
+    if (format === 'geojson') exportGeoJSON(layer, feats)
+    else if (format === 'csv') exportCSV(layer, feats)
+    else if (format === 'xls') await exportXLS(layer, feats)
+    else if (format === 'kml') exportKML(layer, feats)
+    else if (format === 'shp') await exportShapefile(layer, feats)
   }
 
   const handleStopDrawing = () => {
@@ -194,6 +211,7 @@ export default function MapPage({ profile }: Props) {
         <LayerPanel
           open={sidebarOpen}
           layers={layers}
+          features={features}
           activeLayer={activeLayer}
           canEdit={canEdit}
           isAdmin={isAdmin}
@@ -204,6 +222,10 @@ export default function MapPage({ profile }: Props) {
           onAddLayer={() => { setEditingLayer(null); setShowLayerEditor(true) }}
           onEditLayer={l => { setEditingLayer(l); setShowLayerEditor(true) }}
           onDeleteLayer={handleLayerDelete}
+          onZoomToLayer={id => setZoomRequest(id)}
+          onAttributeTable={l => setAttrLayer(l)}
+          onRename={handleRename}
+          onExport={handleExport}
         />
 
         {/* Map */}
@@ -214,6 +236,8 @@ export default function MapPage({ profile }: Props) {
             activeLayer={activeLayer}
             drawingCoords={drawingCoords}
             gpsRequest={gpsRequest}
+            zoomToLayerId={zoomRequest}
+            onZoomDone={() => setZoomRequest(null)}
             onMapClick={handleMapClick}
             onMapDblClick={handleMapDblClick}
             onGPSCapture={handleGPSCapture}
@@ -323,6 +347,14 @@ export default function MapPage({ profile }: Props) {
           layer={editingLayer}
           onSave={handleLayerSave}
           onClose={() => { setShowLayerEditor(false); setEditingLayer(null) }}
+        />
+      )}
+
+      {attrLayer && (
+        <AttributeTableModal
+          layer={attrLayer}
+          features={features[attrLayer.id] ?? []}
+          onClose={() => setAttrLayer(null)}
         />
       )}
     </div>

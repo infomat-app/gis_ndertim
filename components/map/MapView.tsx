@@ -70,6 +70,38 @@ function DrawHandler({
   return null
 }
 
+// ---- Zoom to layer bounds ----
+function ZoomToLayer({
+  layerId, features, onDone,
+}: {
+  layerId: string | null
+  features: Record<string, import('@/lib/types').Feature[]>
+  onDone: () => void
+}) {
+  const map = useMap()
+  useEffect(() => {
+    if (!layerId) return
+    const feats = features[layerId] ?? []
+    if (!feats.length) { onDone(); return }
+    const latlngs: [number, number][] = []
+    feats.forEach(f => {
+      const g = f.geometry
+      const flatten = (c: unknown): void => {
+        if (Array.isArray(c) && typeof c[0] === 'number') {
+          latlngs.push([c[1] as number, c[0] as number])
+        } else if (Array.isArray(c)) {
+          c.forEach(flatten)
+        }
+      }
+      flatten(g.coordinates)
+    })
+    if (latlngs.length) map.fitBounds(latlngs, { padding: [40, 40], maxZoom: 17 })
+    onDone()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layerId])
+  return null
+}
+
 // ---- GPS fly-to ----
 function GPSHandler({
   gpsRequest,
@@ -109,6 +141,8 @@ interface Props {
   activeLayer: Layer | null
   drawingCoords: [number, number][]
   gpsRequest: number
+  zoomToLayerId: string | null
+  onZoomDone: () => void
   onMapClick: (lat: number, lng: number) => void
   onMapDblClick: () => void
   onGPSCapture: (lat: number, lng: number) => void
@@ -117,7 +151,8 @@ interface Props {
 
 export default function MapView({
   layers, features, activeLayer, drawingCoords,
-  gpsRequest, onMapClick, onMapDblClick, onGPSCapture, onFeatureClick,
+  gpsRequest, zoomToLayerId, onZoomDone,
+  onMapClick, onMapDblClick, onGPSCapture, onFeatureClick,
 }: Props) {
 
   const [baseLayerId, setBaseLayerId] = useState('osm')
@@ -223,6 +258,7 @@ export default function MapView({
         onMapDblClick={onMapDblClick}
       />
       <GPSHandler gpsRequest={gpsRequest} onCapture={onGPSCapture} />
+      <ZoomToLayer layerId={zoomToLayerId} features={features} onDone={onZoomDone} />
     </MapContainer>
   )
 }

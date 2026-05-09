@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@mapbox/shp-write": "^0.4.3",
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.0",
     "@tmcw/togeojson": "^7.1.2",
@@ -20,7 +21,8 @@
     "react": "^18",
     "react-dom": "^18",
     "react-leaflet": "^4.2.1",
-    "shapefile": "^0.6.6"
+    "shapefile": "^0.6.6",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.11",

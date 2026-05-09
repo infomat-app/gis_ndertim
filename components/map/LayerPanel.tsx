@@ -1,6 +1,7 @@
 'use client'
-import { useState } from 'react'
-import type { Layer } from '@/lib/types'
+import { useState, useRef } from 'react'
+import type { Layer, Feature } from '@/lib/types'
+import LayerContextMenu from './LayerContextMenu'
 
 const GEOM_ICON: Record<string, string> = {
   Point:      '●',
@@ -11,6 +12,7 @@ const GEOM_ICON: Record<string, string> = {
 interface Props {
   open: boolean
   layers: Layer[]
+  features: Record<string, Feature[]>
   activeLayer: Layer | null
   canEdit: boolean
   isAdmin: boolean
@@ -21,14 +23,45 @@ interface Props {
   onEditLayer: (l: Layer) => void
   onDeleteLayer: (id: string) => void
   onImport: () => void
+  onZoomToLayer: (layerId: string) => void
+  onAttributeTable: (layer: Layer) => void
+  onRename: (layer: Layer) => void
+  onExport: (layer: Layer, format: 'geojson' | 'csv' | 'xls' | 'kml' | 'shp') => void
 }
 
 export default function LayerPanel({
-  open, layers, activeLayer, canEdit, isAdmin,
+  open, layers, features, activeLayer, canEdit, isAdmin,
   onToggle, onSelectLayer, onToggleVisibility,
   onAddLayer, onEditLayer, onDeleteLayer, onImport,
+  onZoomToLayer, onAttributeTable, onRename, onExport,
 }: Props) {
-  const [hoverId, setHoverId] = useState<string | null>(null)
+  const [menuLayer, setMenuLayer] = useState<Layer | null>(null)
+  const [menuPos,   setMenuPos]   = useState({ x: 0, y: 0 })
+  const [renaming,  setRenaming]  = useState<string | null>(null)
+  const [renameVal, setRenameVal] = useState('')
+  const renameRef = useRef<HTMLInputElement>(null)
+
+  const openMenu = (e: React.MouseEvent, layer: Layer) => {
+    e.stopPropagation()
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setMenuPos({ x: rect.right + 4, y: rect.top })
+    setMenuLayer(layer)
+  }
+
+  const startRename = (layer: Layer) => {
+    setRenaming(layer.id)
+    setRenameVal(layer.name)
+    setTimeout(() => renameRef.current?.select(), 50)
+  }
+
+  const commitRename = (layer: Layer) => {
+    if (renameVal.trim() && renameVal.trim() !== layer.name) {
+      onRename({ ...layer, name: renameVal.trim() })
+    }
+    setRenaming(null)
+  }
+
+  const featureCount = (id: string) => features[id]?.length ?? '?'
 
   return (
     <aside
@@ -93,12 +126,11 @@ export default function LayerPanel({
             )}
             {layers.map(layer => {
               const isActive = activeLayer?.id === layer.id
+              const isRenam  = renaming === layer.id
               return (
                 <div
                   key={layer.id}
-                  onMouseEnter={() => setHoverId(layer.id)}
-                  onMouseLeave={() => setHoverId(null)}
-                  className={`group flex items-center gap-2 px-3 py-2 mx-1 rounded-lg cursor-pointer transition-all ${
+                  className={`group flex items-center gap-2 px-2 py-2 mx-1 rounded-lg transition-all ${
                     isActive
                       ? 'bg-s4 border border-b2'
                       : 'hover:bg-s3 border border-transparent'
@@ -122,60 +154,61 @@ export default function LayerPanel({
                     )}
                   </button>
 
-                  {/* Color dot + geom icon */}
-                  <span
-                    className="text-base shrink-0"
-                    style={{ color: layer.color }}
-                  >
+                  {/* Color dot */}
+                  <span className="text-base shrink-0" style={{ color: layer.color }}>
                     {GEOM_ICON[layer.geom_type]}
                   </span>
 
-                  {/* Name */}
+                  {/* Name + meta */}
                   <div
                     className="flex-1 min-w-0"
-                    onClick={() => canEdit && onSelectLayer(layer)}
+                    onClick={() => canEdit && !isRenam && onSelectLayer(layer)}
                   >
-                    <p className={`text-xs font-mono truncate ${layer.visible ? 'text-txt' : 'text-txt3 line-through'}`}>
-                      {layer.name}
-                    </p>
-                    <p className="text-[10px] text-txt3">
-                      {layer.geom_type}
-                    </p>
+                    {isRenam ? (
+                      <input
+                        ref={renameRef}
+                        value={renameVal}
+                        onChange={e => setRenameVal(e.target.value)}
+                        onBlur={() => commitRename(layer)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') commitRename(layer)
+                          if (e.key === 'Escape') setRenaming(null)
+                        }}
+                        className="w-full bg-bg border border-acc rounded px-1.5 py-0.5 text-xs text-txt outline-none font-mono"
+                        onClick={e => e.stopPropagation()}
+                      />
+                    ) : (
+                      <>
+                        <p className={`text-xs font-mono truncate ${layer.visible ? 'text-txt' : 'text-txt3 line-through'}`}>
+                          {layer.name}
+                        </p>
+                        <p className="text-[10px] text-txt3">
+                          {featureCount(layer.id)} obj · {layer.geom_type.toLowerCase()}
+                        </p>
+                      </>
+                    )}
                   </div>
 
-                  {/* Active indicator */}
-                  {isActive && (
+                  {/* Active badge */}
+                  {isActive && !isRenam && (
                     <span className="text-[9px] font-mono text-acc bg-acc/10 border border-acc/30 px-1.5 py-0.5 rounded shrink-0">
                       AKTIV
                     </span>
                   )}
 
-                  {/* Edit/Delete actions */}
-                  {canEdit && (hoverId === layer.id || isActive) && (
-                    <div className="flex gap-0.5 shrink-0">
-                      <button
-                        onClick={e => { e.stopPropagation(); onEditLayer(layer) }}
-                        className="p-1 rounded hover:bg-acc2/20 text-txt3 hover:text-acc2 transition-colors"
-                        title="Edito shtresën"
-                      >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                      </button>
-                      {isAdmin && (
-                        <button
-                          onClick={e => { e.stopPropagation(); onDeleteLayer(layer.id) }}
-                          className="p-1 rounded hover:bg-err/20 text-txt3 hover:text-err transition-colors"
-                          title="Fshi shtresën"
-                        >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                          </svg>
-                        </button>
-                      )}
-                    </div>
+                  {/* Three-dot menu button */}
+                  {!isRenam && (
+                    <button
+                      onClick={e => openMenu(e, layer)}
+                      className="shrink-0 p-1 rounded hover:bg-b2 text-txt3 hover:text-txt transition-colors opacity-0 group-hover:opacity-100"
+                      title="Veprime"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="5" r="1" fill="currentColor"/>
+                        <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                        <circle cx="12" cy="19" r="1" fill="currentColor"/>
+                      </svg>
+                    </button>
                   )}
                 </div>
               )
@@ -185,10 +218,29 @@ export default function LayerPanel({
           {/* Footer info */}
           <div className="px-3 py-2 border-t border-b1">
             <p className="text-[10px] text-txt3 font-mono">
-              {layers.length} shtresa · {Object.values({}).length} objekte
+              {layers.length} shtresa
             </p>
           </div>
         </>
+      )}
+
+      {/* Context menu */}
+      {menuLayer && (
+        <LayerContextMenu
+          layer={menuLayer}
+          position={menuPos}
+          canEdit={canEdit}
+          isAdmin={isAdmin}
+          onClose={() => setMenuLayer(null)}
+          onZoom={() => onZoomToLayer(menuLayer.id)}
+          onAttributeTable={() => onAttributeTable(menuLayer)}
+          onStyle={() => onEditLayer(menuLayer)}
+          onExport={fmt => onExport(menuLayer, fmt)}
+          onEditFields={() => onEditLayer(menuLayer)}
+          onRename={() => startRename(menuLayer)}
+          onToggleVisibility={() => onToggleVisibility(menuLayer.id, !menuLayer.visible)}
+          onDelete={() => { if (confirm('Fshi shtresën dhe të gjitha objektet e saj?')) onDeleteLayer(menuLayer.id) }}
+        />
       )}
     </aside>
   )
