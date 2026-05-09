@@ -165,7 +165,7 @@ export default function FieldCollector({ profile, layers }: Props) {
             {/* Success flash */}
             {step === 'done' && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="bg-acc/95 text-[#021a10] font-bold text-lg px-8 py-4 rounded-2xl shadow-2xl">
+                <div className="bg-acc/95 text-[#05101e] font-bold text-lg px-8 py-4 rounded-2xl shadow-2xl">
                   ✓ U ruajt me sukses!
                 </div>
               </div>
@@ -273,7 +273,7 @@ export default function FieldCollector({ profile, layers }: Props) {
                           onClick={() => setFormValues(p => ({ ...p, [f.field_name]: val }))}
                           className={`flex-1 py-3 rounded-xl border text-sm font-mono transition-all ${
                             formValues[f.field_name] === val
-                              ? 'bg-acc text-[#021a10] border-acc font-semibold'
+                              ? 'bg-acc text-[#05101e] border-acc font-semibold'
                               : 'bg-s1 border-b1 text-txt2 hover:border-b2'
                           }`}
                         >
@@ -300,7 +300,7 @@ export default function FieldCollector({ profile, layers }: Props) {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full py-4 rounded-2xl bg-acc text-[#021a10] font-bold text-base active:scale-95 transition-transform disabled:opacity-50"
+                className="w-full py-4 rounded-2xl bg-acc text-[#05101e] font-bold text-base active:scale-95 transition-transform disabled:opacity-50"
               >
                 {saving ? 'Duke ruajtur...' : '✓ Ruaj Pikën'}
               </button>

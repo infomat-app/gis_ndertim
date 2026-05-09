@@ -115,7 +115,7 @@ async function parseFile(f: File): Promise<GeoJSONFeature[]> {
 
 // ---- Component ----
 
-const DEFAULT_COLORS = ['#e91e8c','#2d8bff','#05d9a0','#ffaa2e','#9b5fff','#ff4d6d','#00c8ff']
+const DEFAULT_COLORS = ['#4da6ff','#7ec8ff','#a78bfa','#ffaa2e','#ff4d6d','#e91e8c','#00e5ff']
 
 export default function ImportModal({ layers, onImport, onCreateAndImport, onClose }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -124,7 +124,7 @@ export default function ImportModal({ layers, onImport, onCreateAndImport, onClo
   const [mode,        setMode]        = useState<'existing'|'new'>('new')
   const [targetLayer, setTargetLayer] = useState('')
   const [newName,     setNewName]     = useState('')
-  const [newColor,    setNewColor]    = useState('#e91e8c')
+  const [newColor,    setNewColor]    = useState('#4da6ff')
   const [loading,     setLoading]     = useState(false)
   const [result,      setResult]      = useState<{ ok: number; err: number } | null>(null)
   const [error,       setError]       = useState<string | null>(null)
@@ -179,7 +179,7 @@ export default function ImportModal({ layers, onImport, onCreateAndImport, onClo
 
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-b1 shrink-0">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#05d9a0" strokeWidth="2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
@@ -288,7 +288,7 @@ export default function ImportModal({ layers, onImport, onCreateAndImport, onClo
                   onClick={() => setMode('new')}
                   className={`flex-1 py-2 rounded-lg text-xs font-mono transition-all ${
                     mode === 'new'
-                      ? 'bg-acc text-[#021a10] font-semibold'
+                      ? 'bg-acc text-[#05101e] font-semibold'
                       : 'text-txt2 hover:text-txt'
                   }`}
                 >
@@ -298,7 +298,7 @@ export default function ImportModal({ layers, onImport, onCreateAndImport, onClo
                   onClick={() => setMode('existing')}
                   className={`flex-1 py-2 rounded-lg text-xs font-mono transition-all ${
                     mode === 'existing'
-                      ? 'bg-acc text-[#021a10] font-semibold'
+                      ? 'bg-acc text-[#05101e] font-semibold'
                       : 'text-txt2 hover:text-txt'
                   }`}
                 >
@@ -404,7 +404,7 @@ export default function ImportModal({ layers, onImport, onCreateAndImport, onClo
             <button
               onClick={handleImport}
               disabled={loading || !preview.length || (mode === 'existing' && !targetLayer)}
-              className="flex-1 py-2.5 rounded-xl bg-acc text-[#021a10] font-semibold text-sm hover:bg-[#04c490] disabled:opacity-50 transition-colors"
+              className="flex-1 py-2.5 rounded-xl bg-acc text-[#05101e] font-semibold text-sm hover:bg-[#3a9aff] disabled:opacity-50 transition-colors"
             >
               {loading ? 'Duke importuar...' : `Importo ${preview.length ? preview.length + ' objekte' : ''}`}
             </button>

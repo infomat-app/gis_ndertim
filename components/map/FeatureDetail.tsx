@@ -139,7 +139,7 @@ export default function FeatureDetail({ feature, layer, canEdit, onClose, onDele
             </button>
             <button
               onClick={handleSave}
-              className="flex-1 py-1.5 rounded bg-acc text-[#021a10] font-semibold text-xs hover:bg-[#04c490]"
+              className="flex-1 py-1.5 rounded bg-acc text-[#05101e] font-semibold text-xs hover:bg-[#3a9aff]"
             >
               Ruaj
             </button>

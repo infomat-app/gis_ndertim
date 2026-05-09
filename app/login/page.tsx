@@ -41,7 +41,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
             <div className="w-10 h-10 rounded-xl bg-acc/20 border border-acc/40 flex items-center justify-center">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#05d9a0" strokeWidth="2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
                 <circle cx="12" cy="9" r="2.5"/>
               </svg>
@@ -60,7 +60,7 @@ export default function LoginPage() {
                 onClick={() => { setMode(m); setError(null) }}
                 className={`flex-1 py-2 rounded-md text-sm font-mono transition-all ${
                   mode === m
-                    ? 'bg-acc text-[#021a10] font-semibold'
+                    ? 'bg-acc text-[#05101e] font-semibold'
                     : 'text-txt2 hover:text-txt'
                 }`}
               >
@@ -118,7 +118,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-acc text-[#021a10] font-semibold text-sm rounded-lg py-3 hover:bg-[#04c490] disabled:opacity-50 transition-colors mt-2"
+              className="w-full bg-acc text-[#05101e] font-semibold text-sm rounded-lg py-3 hover:bg-[#3a9aff] disabled:opacity-50 transition-colors mt-2"
             >
               {loading ? 'Duke u procesuar...' : mode === 'login' ? 'Hyr' : 'Regjistrohu'}
             </button>

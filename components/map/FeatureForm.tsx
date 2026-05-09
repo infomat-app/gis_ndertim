@@ -124,7 +124,7 @@ export default function FeatureForm({ layer, geomType, onSubmit, onCancel }: Pro
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-2.5 rounded-lg bg-acc text-[#021a10] font-semibold text-sm hover:bg-[#04c490] disabled:opacity-50 transition-colors"
+                className="flex-1 py-2.5 rounded-lg bg-acc text-[#05101e] font-semibold text-sm hover:bg-[#3a9aff] disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Duke ruajtur...' : 'Ruaj Objektin'}
               </button>
@@ -140,7 +140,7 @@ export default function FeatureForm({ layer, geomType, onSubmit, onCancel }: Pro
             </button>
             <button
               onClick={() => onSubmit({})}
-              className="flex-1 py-2.5 rounded-lg bg-acc text-[#021a10] font-semibold text-sm hover:bg-[#04c490] transition-colors"
+              className="flex-1 py-2.5 rounded-lg bg-acc text-[#05101e] font-semibold text-sm hover:bg-[#3a9aff] transition-colors"
             >
               Ruaj
             </button>

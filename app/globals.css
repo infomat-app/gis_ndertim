@@ -17,16 +17,16 @@ html, body { height: 100%; }
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track  { background: transparent; }
-::-webkit-scrollbar-thumb  { background: #253352; border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: #2e4068; }
+::-webkit-scrollbar-thumb  { background: #1f3460; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #28437a; }
 
 /* Leaflet popup override */
 .leaflet-popup-content-wrapper {
-  background: #0d1119;
+  background: #0a1628;
   color: #dce6f5;
-  border: 1px solid #253352;
+  border: 1px solid #1f3460;
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
 }
-.leaflet-popup-tip { background: #0d1119; }
-.leaflet-popup-close-button { color: #8da0bb !important; }
+.leaflet-popup-tip { background: #0a1628; }
+.leaflet-popup-close-button { color: #7a9fc4 !important; }
