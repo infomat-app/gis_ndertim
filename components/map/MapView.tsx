@@ -1,11 +1,12 @@
 'use client'
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import {
   MapContainer, TileLayer, Marker, Polyline, Polygon,
   useMapEvents, useMap, Tooltip,
 } from 'react-leaflet'
 import L from 'leaflet'
 import type { Layer, Feature } from '@/lib/types'
+import BaseLayerControl from './BaseLayerControl'
 
 // Fix Leaflet default icon (CDN fallback for Next.js)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -119,6 +120,8 @@ export default function MapView({
   gpsRequest, onMapClick, onMapDblClick, onGPSCapture, onFeatureClick,
 }: Props) {
 
+  const [baseLayerId, setBaseLayerId] = useState('osm')
+
   const getFirstProp = useCallback((f: Feature): string => {
     const vals = Object.values(f.properties ?? {})
     return vals.length ? String(vals[0]) : f.id.slice(0, 8)
@@ -132,11 +135,14 @@ export default function MapView({
       doubleClickZoom={false}
       zoomControl={true}
     >
+      {/* Initial OSM tile (replaced by BaseLayerControl after mount) */}
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+        attribution='&copy; OpenStreetMap'
         maxZoom={19}
       />
+
+      <BaseLayerControl activeId={baseLayerId} onChange={setBaseLayerId} />
 
       {/* Render features per visible layer */}
       {layers.filter(l => l.visible).map(layer =>
