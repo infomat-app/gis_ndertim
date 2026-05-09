@@ -142,6 +142,23 @@ export default function MapPage({ profile }: Props) {
     setSelectedFeature(null)
   }
 
+  const handleGeometryUpdate = async (featureId: string, newGeom: GeoJSONGeometry) => {
+    if (!canEdit) return
+    const { data } = await supabase
+      .from('features')
+      .update({ geometry: newGeom })
+      .eq('id', featureId)
+      .select('*, profile:profiles(full_name,email)')
+      .single()
+    if (data) {
+      setFeatures(prev => ({
+        ...prev,
+        [data.layer_id]: (prev[data.layer_id] ?? []).map(f => f.id === data.id ? data : f),
+      }))
+      setSelectedFeature(data)
+    }
+  }
+
   const handleFeatureUpdate = async (feature: Feature, properties: Record<string, unknown>) => {
     const { data } = await supabase
       .from('features')
@@ -247,6 +264,8 @@ export default function MapPage({ profile }: Props) {
             zoomToLayerId={zoomRequest}
             zoomToFeature={zoomFeature}
             selectedFeatureId={selectedFeature?.id}
+            selectedFeature={selectedFeature}
+            onGeometryUpdate={canEdit ? handleGeometryUpdate : undefined}
             onZoomDone={() => { setZoomRequest(null); setZoomFeature(null) }}
             onMapClick={handleMapClick}
             onMapDblClick={handleMapDblClick}

@@ -5,7 +5,7 @@ import {
   useMapEvents, useMap, Tooltip,
 } from 'react-leaflet'
 import L from 'leaflet'
-import type { Layer, Feature, PointStyle } from '@/lib/types'
+import type { Layer, Feature, PointStyle, GeoJSONGeometry } from '@/lib/types'
 import BaseLayerControl from './BaseLayerControl'
 
 // Fix Leaflet default icon (CDN fallback for Next.js)
@@ -57,6 +57,70 @@ const vertexIcon = (first: boolean) => L.divIcon({
   iconSize: [10, 10],
   iconAnchor: [5, 5],
 })
+
+const editVertexIcon = L.divIcon({
+  className: '',
+  html: `<div style="width:12px;height:12px;border-radius:50%;background:#fbbf24;border:2.5px solid white;box-shadow:0 0 0 1px rgba(0,0,0,.25),0 2px 5px rgba(0,0,0,.3);cursor:grab"></div>`,
+  iconSize: [12, 12],
+  iconAnchor: [6, 6],
+})
+
+// ---- Vertex editor for selected LineString / Polygon ----
+function VertexEditor({
+  feature,
+  onUpdate,
+}: {
+  feature: Feature
+  onUpdate: (featureId: string, newGeom: GeoJSONGeometry) => void
+}) {
+  if (feature.geometry.type === 'LineString') {
+    const coords = feature.geometry.coordinates as [number, number][]
+    return (
+      <>
+        {coords.map((coord, i) => (
+          <Marker
+            key={`ve-${i}`}
+            position={[coord[1], coord[0]]}
+            icon={editVertexIcon}
+            draggable={true}
+            eventHandlers={{
+              dragend: (e) => {
+                const pos = (e.target as L.Marker).getLatLng()
+                const newCoords = coords.map((c, idx) => idx === i ? [pos.lng, pos.lat] as [number, number] : c)
+                onUpdate(feature.id, { type: 'LineString', coordinates: newCoords })
+              },
+            }}
+          />
+        ))}
+      </>
+    )
+  }
+  if (feature.geometry.type === 'Polygon') {
+    const ring = (feature.geometry.coordinates as [number, number][][])[0]
+    const verts = ring.slice(0, -1)
+    return (
+      <>
+        {verts.map((coord, i) => (
+          <Marker
+            key={`ve-${i}`}
+            position={[coord[1], coord[0]]}
+            icon={editVertexIcon}
+            draggable={true}
+            eventHandlers={{
+              dragend: (e) => {
+                const pos = (e.target as L.Marker).getLatLng()
+                const newVerts = verts.map((c, idx) => idx === i ? [pos.lng, pos.lat] as [number, number] : c)
+                newVerts.push(newVerts[0])
+                onUpdate(feature.id, { type: 'Polygon', coordinates: [newVerts] })
+              },
+            }}
+          />
+        ))}
+      </>
+    )
+  }
+  return null
+}
 
 // ---- Map event handler inner component ----
 function DrawHandler({
@@ -181,17 +245,21 @@ interface Props {
   zoomToLayerId: string | null
   zoomToFeature: Feature | null
   selectedFeatureId?: string | null
+  selectedFeature?: Feature | null
   onZoomDone: () => void
   onMapClick: (lat: number, lng: number) => void
   onMapDblClick: () => void
   onGPSCapture: (lat: number, lng: number) => void
   onFeatureClick: (f: Feature) => void
+  onGeometryUpdate?: (featureId: string, newGeom: GeoJSONGeometry) => void
 }
 
 export default function MapView({
   layers, features, activeLayer, drawingCoords,
-  gpsRequest, zoomToLayerId, zoomToFeature, selectedFeatureId,
-  onZoomDone, onMapClick, onMapDblClick, onGPSCapture, onFeatureClick,
+  gpsRequest, zoomToLayerId, zoomToFeature,
+  selectedFeatureId, selectedFeature,
+  onZoomDone, onMapClick, onMapDblClick, onGPSCapture,
+  onFeatureClick, onGeometryUpdate,
 }: Props) {
 
   const [baseLayerId, setBaseLayerId] = useState('osm')
@@ -223,7 +291,15 @@ export default function MapView({
                 position={[lat, lng]}
                 icon={pointIcon(layer.color, layer.point_style ?? 'circle', isSelected)}
                 zIndexOffset={isSelected ? 1000 : 0}
-                eventHandlers={{ click: () => onFeatureClick(feat) }}
+                draggable={isSelected && !!onGeometryUpdate}
+                eventHandlers={{
+                  click: () => onFeatureClick(feat),
+                  dragend: (e) => {
+                    if (!onGeometryUpdate) return
+                    const pos = (e.target as L.Marker).getLatLng()
+                    onGeometryUpdate(feat.id, { type: 'Point', coordinates: [pos.lng, pos.lat] })
+                  },
+                }}
               >
                 <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
                   <span className="text-xs">{getFirstProp(feat)}</span>
@@ -291,6 +367,11 @@ export default function MapView({
             <Marker key={i} position={coord} icon={vertexIcon(i === 0)} />
           ))}
         </>
+      )}
+
+      {/* Vertex editing handles for selected LineString / Polygon */}
+      {selectedFeature && onGeometryUpdate && selectedFeature.geometry.type !== 'Point' && (
+        <VertexEditor feature={selectedFeature} onUpdate={onGeometryUpdate} />
       )}
 
       <DrawHandler
