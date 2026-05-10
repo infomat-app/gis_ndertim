@@ -314,8 +314,11 @@ export default function MapView({
   }, [])
 
   const getFirstProp = useCallback((f: Feature): string => {
-    const vals = Object.values(f.properties ?? {})
-    return vals.length ? String(vals[0]) : f.id.slice(0, 8)
+    const val = Object.values(f.properties ?? {}).find(v => {
+      const s = String(v ?? '')
+      return s.length > 0 && s.length < 120 && !s.startsWith('data:')
+    })
+    return val ? String(val) : f.id.slice(0, 8)
   }, [])
 
   return (
