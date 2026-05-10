@@ -299,11 +299,12 @@ export default function MapPage({ profile }: Props) {
 
         {/* Map */}
         <div className="flex-1 relative overflow-hidden">
-          {/* Mobile sidebar toggle */}
+          {/* Mobile sidebar toggle — positioned below zoom controls (top-left) */}
           {!sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden absolute top-3 left-3 z-[999] bg-white/90 backdrop-blur border border-gray-200 rounded-lg p-2 shadow-md text-gray-700"
+              className="md:hidden absolute z-[999] bg-white/90 backdrop-blur border border-gray-200 rounded-lg p-2 shadow-md text-gray-700"
+              style={{ top: 80, left: 8 }}
               title="Shtresat"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

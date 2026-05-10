@@ -112,13 +112,13 @@ export default function BaseLayerControl({ activeId, onChange }: Props) {
     <>
       <TileUpdater activeId={activeId} />
 
-      <div ref={containerRef} className="absolute bottom-8 right-2 z-[1000]">
+      <div ref={containerRef} className="absolute bottom-10 right-2 z-[1000]">
         <div className="relative flex flex-col items-end">
 
           {/* Dropdown panel — opens upward */}
           {open && (
-            <div className="absolute bottom-full right-0 mb-2 bg-white border border-[#d4e2ff] rounded-2xl shadow-2xl overflow-hidden"
-              style={{ width: 220 }}>
+            <div className="absolute bottom-full right-0 mb-2 bg-white border border-[#d4e2ff] rounded-2xl shadow-2xl overflow-hidden overflow-y-auto"
+              style={{ width: 220, maxHeight: '60vh' }}>
               <div className="px-3 pt-3 pb-2">
                 <p className="text-[10px] font-mono text-[#7a96c0] uppercase tracking-widest mb-2">
                   Harta Bazë
