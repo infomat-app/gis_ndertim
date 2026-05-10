@@ -184,22 +184,24 @@ export default function FieldCollector({ profile, layers }: Props) {
 
           {/* Toolbar GPS — vetëm gjatë hartimit */}
           {(step === 'map' || step === 'done') && (
-            <div className="bg-s1 border-t border-b1 px-4 py-3 safe-area-bottom shrink-0">
+            <div className="bg-s1 border-t border-b1 px-3 py-2.5 safe-area-bottom shrink-0">
               <div className="flex items-center gap-2 max-w-sm mx-auto">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="w-3 h-3 rounded-full shrink-0" style={{ background: activeLayer.color }} />
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: activeLayer.color }} />
                   <span className="text-xs font-mono font-semibold text-txt truncate">{activeLayer.name}</span>
                 </div>
                 <button
                   onClick={() => { setStep('select'); setActiveLayer(null); setGpsCoords(null); setMyLocation(null) }}
-                  className="flex items-center gap-1 px-3 py-2 rounded-xl bg-s3 border border-b2 text-txt2 text-xs font-mono active:scale-95 transition-transform"
+                  className="flex items-center gap-1 px-3 py-2 rounded-xl bg-s3 border border-b2 text-txt2 text-xs font-mono active:scale-95 transition-transform shrink-0"
+                  title="Ndalo"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  Ndalo
+                  <span className="hidden sm:inline">Ndalo</span>
                 </button>
                 <button
                   onClick={() => setGpsRequest(n => n + 1)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-acc2/20 border border-acc2/40 text-acc2 text-xs font-mono active:scale-95 transition-transform"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-acc2/20 border border-acc2/40 text-acc2 text-xs font-mono active:scale-95 transition-transform shrink-0"
+                  title="GPS"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
                   GPS
@@ -207,20 +209,21 @@ export default function FieldCollector({ profile, layers }: Props) {
                 <button
                   onClick={() => { setLocating(true); setLocateTrigger(n => n + 1) }}
                   disabled={locating}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono active:scale-95 transition-transform disabled:opacity-60 ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono active:scale-95 transition-transform disabled:opacity-60 shrink-0 ${
                     myLocation
                       ? 'bg-blue-600/20 border border-blue-500/40 text-blue-600'
                       : 'bg-s3 border border-b2 text-txt2'
                   }`}
+                  title="Vendodhja ime"
                 >
                   {locating
                     ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10" strokeOpacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
                     : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8" strokeOpacity=".5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round"/></svg>
                   }
-                  {locating ? '...' : 'Vendodhja'}
+                  <span className="hidden sm:inline">{locating ? '...' : 'Vendodhja'}</span>
                 </button>
               </div>
-              <p className="text-center text-xs text-txt3 font-mono mt-2">Klikoni në hartë ose përdorni GPS</p>
+              <p className="text-center text-[11px] text-txt3 font-mono mt-1.5">Klikoni në hartë ose përdorni GPS</p>
             </div>
           )}
 
