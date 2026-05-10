@@ -13,6 +13,8 @@
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.0",
     "@tmcw/togeojson": "^7.1.2",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.454.0",
