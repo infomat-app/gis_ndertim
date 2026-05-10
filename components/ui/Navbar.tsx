@@ -30,7 +30,7 @@ export default function Navbar({ profile }: { profile: Profile }) {
   }
 
   const links = [
-    { href: '/map',   label: 'Harta',  roles: ['admin','editor','field','viewer'] },
+    { href: '/map',   label: 'Harta',  roles: ['admin','editor','viewer'] },
     { href: '/admin', label: 'Admin',  roles: ['admin'] },
     { href: '/field', label: 'Terren', roles: ['admin','editor','field'] },
   ].filter(l => l.roles.includes(profile.role))
