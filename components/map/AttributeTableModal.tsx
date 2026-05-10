@@ -179,7 +179,7 @@ export default function AttributeTableModal({
                   <td className="px-3 py-1 text-gray-400 border-r border-gray-100 font-mono">
                     {canEditFeature(f)
                       ? i + 1
-                      : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline text-gray-300" title="Rekord i të tjerëve"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      : <span title="Rekord i të tjerëve"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline text-gray-300"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
                     }
                   </td>
                   {layer.geom_type === 'Point' && (
