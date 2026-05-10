@@ -5,6 +5,13 @@ import { createClient } from '@/lib/supabase'
 import type { Profile, Layer, Feature } from '@/lib/types'
 import Navbar from '@/components/ui/Navbar'
 import FieldFeaturePopup from './FieldFeaturePopup'
+import SignaturePad from '@/components/ui/SignaturePad'
+
+const AUTO_FILL = new Set(['gps_lat','gps_lng','gps_alt','gps_speed','device_id','device_model','username'])
+
+async function readAsDataURL(file: File): Promise<string> {
+  return new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result as string); r.readAsDataURL(file) })
+}
 
 const FieldMap = dynamic(() => import('./FieldMap'), { ssr: false })
 
@@ -73,11 +80,59 @@ export default function FieldCollector({ profile, layers }: Props) {
     setSelectedFeature(null)
   }
 
+  const getMulti = (name: string): string[] => { try { return JSON.parse(formValues[name] || '[]') } catch { return [] } }
+  const toggleMulti = (name: string, opt: string) => {
+    const cur = getMulti(name)
+    setFormValues(p => ({ ...p, [name]: JSON.stringify(cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt]) }))
+  }
+
   const initForm = (layer: Layer) => {
     const init: Record<string, string> = {}
-    for (const f of layer.fields ?? []) init[f.field_name] = ''
+    for (const f of layer.fields ?? []) init[f.field_name] = f.field_type === 'multiselect' ? '[]' : ''
     setFormValues(init)
   }
+
+  // Auto-fill GPS / device / session fields when form step opens
+  useEffect(() => {
+    if (step !== 'form' || !activeLayer) return
+    const next: Record<string, string> = {}
+    for (const f of activeLayer.fields ?? []) {
+      if (f.field_type === 'username') {
+        next[f.field_name] = profile.full_name ?? profile.email ?? ''
+      } else if (f.field_type === 'device_id') {
+        let id = localStorage.getItem('gis_device_id')
+        if (!id) {
+          id = typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+          localStorage.setItem('gis_device_id', id)
+        }
+        next[f.field_name] = id
+      } else if (f.field_type === 'device_model') {
+        next[f.field_name] = navigator.userAgent.substring(0, 200)
+      } else if (f.field_type === 'gps_lat' && pendingCoords) {
+        next[f.field_name] = pendingCoords[0].toFixed(7)
+      } else if (f.field_type === 'gps_lng' && pendingCoords) {
+        next[f.field_name] = pendingCoords[1].toFixed(7)
+      }
+    }
+    if (Object.keys(next).length) setFormValues(p => ({ ...p, ...next }))
+
+    const altSpeedFields = (activeLayer.fields ?? []).filter(f => ['gps_alt','gps_speed'].includes(f.field_type))
+    if (altSpeedFields.length && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        setFormValues(p => {
+          const n = { ...p }
+          for (const f of altSpeedFields) {
+            if (f.field_type === 'gps_alt' && pos.coords.altitude != null) n[f.field_name] = pos.coords.altitude.toFixed(1)
+            if (f.field_type === 'gps_speed' && pos.coords.speed != null) n[f.field_name] = pos.coords.speed.toFixed(2)
+          }
+          return n
+        })
+      }, undefined, { enableHighAccuracy: true })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, activeLayer?.id])
 
   const selectLayer = (layer: Layer) => {
     setActiveLayer(layer)
@@ -103,10 +158,12 @@ export default function FieldCollector({ profile, layers }: Props) {
 
     const props: Record<string, unknown> = {}
     for (const f of activeLayer.fields ?? []) {
+      if (f.field_type === 'hidden') continue
       const v = formValues[f.field_name]
-      if (!v && f.required) { setSaving(false); return }
+      if (!v && f.required && f.field_type !== 'multiselect' && !AUTO_FILL.has(f.field_type)) { setSaving(false); return }
       if (f.field_type === 'number') props[f.field_name] = v ? Number(v) : null
       else if (f.field_type === 'boolean') props[f.field_name] = v === 'true'
+      else if (f.field_type === 'multiselect') props[f.field_name] = getMulti(f.field_name)
       else props[f.field_name] = v || null
     }
 
@@ -279,69 +336,130 @@ export default function FieldCollector({ profile, layers }: Props) {
                 </p>
               )}
 
-              {fields.sort((a, b) => a.sort_order - b.sort_order).map(f => (
-                <div key={f.id}>
-                  <label className="block text-xs font-semibold text-txt2 uppercase tracking-wide mb-1.5">
-                    {f.field_label}
-                    {f.required && <span className="text-err ml-1">*</span>}
-                  </label>
+              {fields.filter(f => f.field_type !== 'hidden').sort((a, b) => a.sort_order - b.sort_order).map(f => {
+                const val = formValues[f.field_name] ?? ''
+                const setVal = (v: string) => setFormValues(p => ({ ...p, [f.field_name]: v }))
+                const cls = 'w-full bg-s1 border border-b1 rounded-xl px-3 py-2.5 text-sm text-txt outline-none focus:border-acc focus:ring-2 focus:ring-acc/20 transition-all'
 
-                  {f.field_type === 'textarea' ? (
-                    <textarea
-                      value={formValues[f.field_name] ?? ''}
-                      onChange={e => setFormValues(p => ({ ...p, [f.field_name]: e.target.value }))}
-                      required={f.required}
-                      rows={3}
-                      className="w-full bg-s1 border border-b1 rounded-xl px-3 py-2.5 text-sm text-txt outline-none focus:border-acc focus:ring-2 focus:ring-acc/20 transition-all resize-none"
-                      placeholder={f.field_label}
-                    />
-                  ) : f.field_type === 'select' ? (
-                    <select
-                      value={formValues[f.field_name] ?? ''}
-                      onChange={e => setFormValues(p => ({ ...p, [f.field_name]: e.target.value }))}
-                      required={f.required}
-                      className="w-full bg-s1 border border-b1 rounded-xl px-3 py-2.5 text-sm text-txt outline-none focus:border-acc focus:ring-2 focus:ring-acc/20 transition-all"
-                    >
+                let input: React.ReactNode
+
+                if (AUTO_FILL.has(f.field_type)) {
+                  input = (
+                    <div className="flex items-center justify-between bg-bg/50 border border-b1 rounded-xl px-3 py-2.5">
+                      <span className="text-xs text-acc2 font-mono">auto</span>
+                      <span className="text-sm text-txt2 font-mono truncate max-w-[75%] text-right">{val || '—'}</span>
+                    </div>
+                  )
+                } else if (f.field_type === 'textarea') {
+                  input = <textarea value={val} onChange={e => setVal(e.target.value)} required={f.required} rows={3} placeholder={f.field_label} className={`${cls} resize-none`} />
+                } else if (f.field_type === 'select') {
+                  input = (
+                    <select value={val} onChange={e => setVal(e.target.value)} required={f.required} className={cls}>
                       <option value="">— Zgjidh —</option>
                       {(f.field_options ?? []).map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
-                  ) : f.field_type === 'boolean' ? (
-                    <div className="flex gap-2">
-                      {['true', 'false'].map(val => {
-                        const active = formValues[f.field_name] === val
-                        return (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => setFormValues(p => ({ ...p, [f.field_name]: val }))}
-                            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-sm font-medium transition-all active:scale-95 ${
-                              active
-                                ? val === 'true'
-                                  ? 'bg-green-500 text-white border-green-500'
-                                  : 'bg-red-500 text-white border-red-500'
-                                : 'bg-s1 border-b1 text-txt3 hover:border-b2'
-                            }`}
-                          >
-                            {val === 'true'
-                              ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> Po</>
-                              : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Jo</>
-                            }
-                          </button>
-                        )
-                      })}
+                  )
+                } else if (f.field_type === 'radio') {
+                  input = (
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
+                      {(f.field_options ?? []).map(o => (
+                        <label key={o} className="flex items-center gap-2 text-sm text-txt cursor-pointer">
+                          <input type="radio" name={`r-${f.field_name}`} value={o} checked={val === o} onChange={() => setVal(o)} className="accent-acc" />
+                          {o}
+                        </label>
+                      ))}
                     </div>
-                  ) : (
+                  )
+                } else if (f.field_type === 'multiselect') {
+                  const sel = getMulti(f.field_name)
+                  input = (
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
+                      {(f.field_options ?? []).map(o => (
+                        <label key={o} className="flex items-center gap-2 text-sm text-txt cursor-pointer">
+                          <input type="checkbox" checked={sel.includes(o)} onChange={() => toggleMulti(f.field_name, o)} className="accent-acc" />
+                          {o}
+                        </label>
+                      ))}
+                    </div>
+                  )
+                } else if (f.field_type === 'boolean') {
+                  input = (
+                    <div className="flex gap-2">
+                      {(['true','false'] as const).map(v => (
+                        <button key={v} type="button" onClick={() => setVal(v)}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-sm font-medium transition-all active:scale-95 ${
+                            val === v
+                              ? v === 'true' ? 'bg-green-500 text-white border-green-500' : 'bg-red-500 text-white border-red-500'
+                              : 'bg-s1 border-b1 text-txt3 hover:border-b2'
+                          }`}>
+                          {v === 'true'
+                            ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> Po</>
+                            : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Jo</>
+                          }
+                        </button>
+                      ))}
+                    </div>
+                  )
+                } else if (f.field_type === 'color') {
+                  input = (
+                    <div className="flex gap-3 items-center">
+                      <input type="color" value={val || '#000000'} onChange={e => setVal(e.target.value)} className="h-10 w-16 rounded-xl border border-b1 bg-s1 cursor-pointer" />
+                      <span className="text-sm text-txt2 font-mono">{val}</span>
+                    </div>
+                  )
+                } else if (f.field_type === 'photo' || f.field_type === 'video' || f.field_type === 'audio') {
+                  const cfg = {
+                    photo: { icon: '📷', accept: 'image/*', label: 'Kap / Zgjidh foto', capture: 'environment' as const },
+                    video: { icon: '🎬', accept: 'video/*', label: 'Kap / Zgjidh video', capture: 'environment' as const },
+                    audio: { icon: '🎙️', accept: 'audio/*', label: 'Regjistro audio', capture: undefined },
+                  }[f.field_type]
+                  input = (
+                    <div>
+                      <label htmlFor={`fc-${f.field_name}`}
+                        className="flex items-center gap-3 px-3 py-3 bg-s2 border border-b1 rounded-xl cursor-pointer hover:bg-s3 transition-colors">
+                        <span className="text-xl">{cfg.icon}</span>
+                        <span className="text-sm text-txt2">{val ? 'Ndryshim' : cfg.label}</span>
+                      </label>
+                      <input id={`fc-${f.field_name}`} type="file" accept={cfg.accept}
+                        {...(cfg.capture ? { capture: cfg.capture } : {})}
+                        className="hidden"
+                        onChange={async e => { const file = e.target.files?.[0]; if (file) setVal(await readAsDataURL(file)) }}
+                      />
+                      {val && f.field_type === 'photo' && <img src={val} alt="" className="mt-2 w-full max-h-40 object-cover rounded-xl" />}
+                      {val && f.field_type === 'audio' && <audio src={val} controls className="mt-2 w-full" />}
+                      {val && f.field_type === 'video' && <video src={val} controls className="mt-2 w-full rounded-xl max-h-40" />}
+                    </div>
+                  )
+                } else if (f.field_type === 'signature') {
+                  input = <SignaturePad value={val} onChange={setVal} height={120} />
+                } else if (f.field_type === 'qrcode') {
+                  input = <input value={val} onChange={e => setVal(e.target.value)} required={f.required} placeholder="Skano ose shkruaj" className={`${cls} font-mono`} />
+                } else if (f.field_type === 'formula' || f.field_type === 'counter') {
+                  input = (
+                    <div className="flex items-center justify-between bg-bg/50 border border-dashed border-b2 rounded-xl px-3 py-2.5">
+                      <span className="text-xs text-txt3 font-mono">{f.field_type}</span>
+                      <span className="text-sm text-txt2 font-mono">{val || '—'}</span>
+                    </div>
+                  )
+                } else {
+                  input = (
                     <input
-                      type={f.field_type === 'number' ? 'number' : f.field_type === 'date' ? 'date' : 'text'}
-                      value={formValues[f.field_name] ?? ''}
-                      onChange={e => setFormValues(p => ({ ...p, [f.field_name]: e.target.value }))}
-                      required={f.required}
-                      placeholder={f.field_label}
-                      className="w-full bg-s1 border border-b1 rounded-xl px-3 py-2.5 text-sm text-txt outline-none focus:border-acc focus:ring-2 focus:ring-acc/20 transition-all"
+                      type={f.field_type === 'number' ? 'number' : f.field_type === 'date' ? 'date' : f.field_type === 'time' ? 'time' : f.field_type === 'datetime' ? 'datetime-local' : 'text'}
+                      value={val} onChange={e => setVal(e.target.value)} required={f.required} placeholder={f.field_label}
+                      className={cls}
                     />
-                  )}
-                </div>
-              ))}
+                  )
+                }
+
+                return (
+                  <div key={f.id}>
+                    <label className="block text-xs font-semibold text-txt2 uppercase tracking-wide mb-1.5">
+                      {f.field_label}{f.required && <span className="text-err ml-1">*</span>}
+                    </label>
+                    {input}
+                  </div>
+                )
+              })}
             </div>
           </div>
 

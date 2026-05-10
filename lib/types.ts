@@ -1,7 +1,15 @@
 export type Role = 'admin' | 'editor' | 'field' | 'viewer'
 export type LayerPermLevel = 'none' | 'view' | 'edit'
 export type GeomType = 'Point' | 'LineString' | 'Polygon'
-export type FieldType = 'text' | 'number' | 'date' | 'select' | 'textarea' | 'boolean'
+export type FieldType =
+  | 'text' | 'number' | 'boolean' | 'textarea'
+  | 'date' | 'time' | 'datetime'
+  | 'select' | 'radio' | 'multiselect'
+  | 'photo' | 'video' | 'audio' | 'signature'
+  | 'gps_lat' | 'gps_lng' | 'gps_alt' | 'gps_speed'
+  | 'device_id' | 'device_model' | 'username'
+  | 'qrcode'
+  | 'formula' | 'counter' | 'color' | 'hidden'
 
 export interface Profile {
   id: string

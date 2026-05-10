@@ -11,13 +11,47 @@ const POINT_STYLES: { id: PointStyle; label: string; preview: (c: string) => Rea
   { id: 'cross',    label: 'Kryq',        preview: c => <path d="M5.5 1h5v4.5H15v5h-4.5V15h-5v-4.5H1v-5h4.5z" fill={c} stroke="white" strokeWidth="1" strokeLinejoin="round"/> },
 ]
 
-const FIELD_TYPES: { value: FieldType; label: string }[] = [
-  { value: 'text',     label: 'Tekst' },
-  { value: 'number',   label: 'Numër' },
-  { value: 'date',     label: 'Datë' },
-  { value: 'select',   label: 'Listë zgjedhëse' },
-  { value: 'textarea', label: 'Tekst i gjatë' },
-  { value: 'boolean',  label: 'Po / Jo' },
+const FIELD_TYPE_GROUPS: { group: string; types: { value: FieldType; label: string }[] }[] = [
+  { group: 'Bazë', types: [
+    { value: 'text',     label: 'Tekst' },
+    { value: 'number',   label: 'Numër' },
+    { value: 'boolean',  label: 'Po / Jo' },
+    { value: 'textarea', label: 'Tekst i gjatë' },
+  ]},
+  { group: 'Datum / Kohë', types: [
+    { value: 'date',     label: 'Datë' },
+    { value: 'time',     label: 'Orë' },
+    { value: 'datetime', label: 'Datë + Orë' },
+  ]},
+  { group: 'Zgjedhje', types: [
+    { value: 'select',      label: 'Lista zgjedhëse' },
+    { value: 'radio',       label: 'Radio buton' },
+    { value: 'multiselect', label: 'Shumë zgjedhje' },
+  ]},
+  { group: 'Media', types: [
+    { value: 'photo',     label: 'Foto' },
+    { value: 'video',     label: 'Video' },
+    { value: 'audio',     label: 'Regjistrim audio' },
+    { value: 'signature', label: 'Nënshkrim' },
+  ]},
+  { group: 'Vendndodhja GPS', types: [
+    { value: 'gps_lat',   label: 'Gjerësi gjeografike' },
+    { value: 'gps_lng',   label: 'Gjatësi gjeografike' },
+    { value: 'gps_alt',   label: 'Lartësi mbi det (m)' },
+    { value: 'gps_speed', label: 'Shpejtësi (m/s)' },
+  ]},
+  { group: 'Pajisja / Sesioni', types: [
+    { value: 'device_id',    label: 'ID Pajisje (UUID)' },
+    { value: 'device_model', label: 'Modeli i pajisjes' },
+    { value: 'username',     label: 'Emri i përdoruesit' },
+    { value: 'qrcode',       label: 'QR / Barcode' },
+  ]},
+  { group: 'Avancuar', types: [
+    { value: 'formula', label: 'Formula' },
+    { value: 'counter', label: 'Numërator' },
+    { value: 'color',   label: 'Ngjyrë' },
+    { value: 'hidden',  label: 'Fushë e fshehur' },
+  ]},
 ]
 
 type DraftField = Omit<LayerField, 'id' | 'layer_id'>
@@ -251,7 +285,11 @@ export default function LayerEditorModal({ layer, onSave, onClose }: Props) {
                           onChange={e => updateField(i, 'field_type', e.target.value)}
                           className="w-full bg-bg border border-b1 rounded px-2 py-1 text-xs text-txt outline-none focus:border-acc mt-0.5"
                         >
-                          {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                          {FIELD_TYPE_GROUPS.map(g => (
+                            <optgroup key={g.group} label={g.group}>
+                              {g.types.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                            </optgroup>
+                          ))}
                         </select>
                       </div>
                       <label className="flex items-center gap-1.5 text-xs text-txt2 pb-1 cursor-pointer">
@@ -265,7 +303,7 @@ export default function LayerEditorModal({ layer, onSave, onClose }: Props) {
                       </label>
                     </div>
 
-                    {f.field_type === 'select' && (
+                    {(f.field_type === 'select' || f.field_type === 'radio' || f.field_type === 'multiselect') && (
                       <div>
                         <label className="text-[10px] text-txt3 font-mono">Opsionet (ndaj me presje)</label>
                         <input
@@ -273,6 +311,17 @@ export default function LayerEditorModal({ layer, onSave, onClose }: Props) {
                           onChange={e => updateField(i, 'field_options', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                           className="w-full bg-bg border border-b1 rounded px-2 py-1 text-xs text-txt font-mono outline-none focus:border-acc mt-0.5"
                           placeholder="Opsion 1, Opsion 2, Opsion 3"
+                        />
+                      </div>
+                    )}
+                    {f.field_type === 'formula' && (
+                      <div>
+                        <label className="text-[10px] text-txt3 font-mono">Shprehja (p.sh. &#123;fusha1&#125; * &#123;fusha2&#125;)</label>
+                        <input
+                          value={(f.field_options ?? [])[0] ?? ''}
+                          onChange={e => updateField(i, 'field_options', e.target.value ? [e.target.value] : [])}
+                          className="w-full bg-bg border border-b1 rounded px-2 py-1 text-xs text-txt font-mono outline-none focus:border-acc mt-0.5"
+                          placeholder="{emri_fushe} * 2"
                         />
                       </div>
                     )}
