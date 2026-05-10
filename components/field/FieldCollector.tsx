@@ -269,7 +269,8 @@ export default function FieldCollector({ profile, layers }: Props) {
 
           {/* Toolbar GPS — vetëm gjatë hartimit */}
           {(step === 'map' || step === 'done') && (
-            <div className="bg-s1 border-t border-b1 px-3 py-2.5 safe-area-bottom shrink-0">
+            <div className="bg-s1 border-t border-b1 px-3 pt-3 shrink-0"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)' }}>
               <div className="flex items-center gap-2 max-w-sm mx-auto">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: activeLayer.color }} />
@@ -464,7 +465,8 @@ export default function FieldCollector({ profile, layers }: Props) {
           </div>
 
           {/* Footer: action buttons */}
-          <div className="shrink-0 px-4 py-3 bg-s1 border-t border-b1">
+          <div className="shrink-0 px-4 pt-3 bg-s1 border-t border-b1"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
             <div className="max-w-sm mx-auto flex gap-2">
               <button
                 onClick={() => { setPendingCoords(null); setStep('map') }}
