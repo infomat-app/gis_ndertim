@@ -170,7 +170,7 @@ export default function AdminPanel({ profile, initialUsers, initialLayers }: Pro
               {showAdd && (
                 <div className="px-5 py-4 border-b border-b1 bg-s2">
                   <p className="text-[10px] font-mono text-txt3 uppercase tracking-wider mb-3">Llogari e Re</p>
-                  <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                     <div>
                       <label className="block text-xs text-txt2 font-mono mb-1">Email *</label>
                       <input
@@ -301,7 +301,7 @@ export default function AdminPanel({ profile, initialUsers, initialLayers }: Pro
                           </button>
                         </div>
                       ) : (
-                        <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           {/* Pencil — edit name */}
                           <button
                             onClick={() => startEdit(u)}

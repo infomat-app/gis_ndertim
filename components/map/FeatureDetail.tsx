@@ -56,7 +56,7 @@ export default function FeatureDetail({ feature, layer, canEdit, onClose, onDele
   const title = firstVal ? String(firstVal) : layer.name
 
   return (
-    <div className="absolute top-2 right-2 z-[1000] w-80 bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col text-gray-800" style={{ maxHeight: '80vh' }}>
+    <div className="z-[1000] bg-white border border-gray-200 shadow-2xl flex flex-col text-gray-800 fixed bottom-0 left-0 right-0 rounded-t-2xl md:absolute md:bottom-auto md:top-2 md:right-2 md:left-auto md:w-80 md:rounded-xl" style={{ maxHeight: '75vh' }}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100">
         <div className="flex items-start justify-between gap-2">

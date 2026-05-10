@@ -43,11 +43,16 @@ export default function MapPage({ profile }: Props) {
   const [showLayerEditor, setShowLayerEditor] = useState(false)
   const [editingLayer,    setEditingLayer]   = useState<Layer | null>(null)
   const [showImport,      setShowImport]     = useState(false)
-  const [sidebarOpen,     setSidebarOpen]    = useState(true)
+  const [sidebarOpen,     setSidebarOpen]    = useState(false)
   const [gpsRequest,      setGpsRequest]     = useState(0)
   const [attrLayer,       setAttrLayer]      = useState<Layer | null>(null)
   const [zoomRequest,     setZoomRequest]    = useState<string | null>(null)
   const [zoomFeature,     setZoomFeature]    = useState<Feature | null>(null)
+
+  // Auto-open sidebar on desktop
+  useEffect(() => {
+    if (window.innerWidth >= 768) setSidebarOpen(true)
+  }, [])
 
   // Escape closes attribute table
   useEffect(() => {
@@ -288,6 +293,20 @@ export default function MapPage({ profile }: Props) {
 
         {/* Map */}
         <div className="flex-1 relative overflow-hidden">
+          {/* Mobile sidebar toggle */}
+          {!sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden absolute top-3 left-3 z-[999] bg-white/90 backdrop-blur border border-gray-200 rounded-lg p-2 shadow-md text-gray-700"
+              title="Shtresat"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+          )}
           <MapView
             layers={layers.filter(l => canViewLayer(l.id))}
             features={features}
