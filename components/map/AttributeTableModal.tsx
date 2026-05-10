@@ -6,6 +6,7 @@ import { exportCSV } from '@/lib/exports'
 interface Props {
   layer: Layer
   features: Feature[]
+  canEditFeature: (f: Feature) => boolean
   onClose: () => void
   onSelectFeature: (f: Feature) => void
   onZoomToFeature: (f: Feature) => void
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export default function AttributeTableModal({
-  layer, features, onClose,
+  layer, features, canEditFeature, onClose,
   onSelectFeature, onZoomToFeature, onDeleteFeature,
 }: Props) {
   const [search,    setSearch]    = useState('')
@@ -53,11 +54,17 @@ export default function AttributeTableModal({
 
   const handleDeleteSelected = () => {
     if (!selected.size) return
-    const toDelete = features.filter(f => selected.has(f.id))
+    const toDelete = features.filter(f => selected.has(f.id) && canEditFeature(f))
+    if (!toDelete.length) return
     if (!confirm(`Fshi ${toDelete.length} objekt(e)?`)) return
     toDelete.forEach(f => onDeleteFeature(f))
     setSelected(new Set())
   }
+
+  const deletableSelected = useMemo(
+    () => features.filter(f => selected.has(f.id) && canEditFeature(f)).length,
+    [features, selected, canEditFeature]
+  )
 
   const handleZoomSelected = () => {
     const f = features.find(f => selected.has(f.id))
@@ -101,14 +108,14 @@ export default function AttributeTableModal({
         </button>
         <button
           onClick={handleDeleteSelected}
-          disabled={!selected.size}
+          disabled={!deletableSelected}
           className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-40 transition-colors"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
           </svg>
-          Fshi {selected.size > 0 && `(${selected.size})`}
+          Fshi {deletableSelected > 0 && `(${deletableSelected})`}
         </button>
         <button
           onClick={() => exportCSV(layer, features)}
@@ -169,7 +176,12 @@ export default function AttributeTableModal({
                       : i % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'
                   }`}
                 >
-                  <td className="px-3 py-1 text-gray-400 border-r border-gray-100 font-mono">{i + 1}</td>
+                  <td className="px-3 py-1 text-gray-400 border-r border-gray-100 font-mono">
+                    {canEditFeature(f)
+                      ? i + 1
+                      : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline text-gray-300" title="Rekord i të tjerëve"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    }
+                  </td>
                   {layer.geom_type === 'Point' && (
                     <>
                       <td className="px-3 py-1 text-gray-600 border-r border-gray-100 font-mono tabular-nums">

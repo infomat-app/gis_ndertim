@@ -29,7 +29,7 @@ interface Props {
 
 export default function MapPage({ profile }: Props) {
   const supabase  = createClient()
-  const canEdit   = ['admin','editor'].includes(profile.role)
+  const canEdit   = ['admin','editor','field'].includes(profile.role)
   const isAdmin   = profile.role === 'admin'
 
   const [layers,          setLayers]         = useState<Layer[]>([])
@@ -96,6 +96,12 @@ export default function MapPage({ profile }: Props) {
     const p = layerPerms[layerId]
     if (p !== undefined) return p === 'edit'
     return profile.role !== 'viewer'
+  }
+
+  const canEditFeature = (feature: Feature) => {
+    if (!canEditLayer(feature.layer_id)) return false
+    if (profile.role === 'field') return feature.created_by === profile.id
+    return canEdit
   }
 
   // Load features for visible layers
@@ -341,7 +347,7 @@ export default function MapPage({ profile }: Props) {
               key={selectedFeature.id}
               feature={selectedFeature}
               layer={layers.find(l => l.id === selectedFeature.layer_id)!}
-              canEdit={canEditLayer(selectedFeature.layer_id)}
+              canEdit={canEditFeature(selectedFeature)}
               onClose={() => setSelectedFeature(null)}
               onDelete={() => handleFeatureDelete(selectedFeature)}
               onSave={props => handleFeatureUpdate(selectedFeature, props)}
@@ -436,6 +442,7 @@ export default function MapPage({ profile }: Props) {
         <AttributeTableModal
           layer={attrLayer}
           features={features[attrLayer.id] ?? []}
+          canEditFeature={canEditFeature}
           onClose={() => setAttrLayer(null)}
           onSelectFeature={f => setSelectedFeature(f)}
           onZoomToFeature={f => setZoomFeature(f)}

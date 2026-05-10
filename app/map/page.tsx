@@ -16,7 +16,6 @@ export default async function MapRoute() {
     .single()
 
   if (!profile) redirect('/login')
-  if (profile.role === 'field') redirect('/field')
 
   return <MapPage profile={profile} />
 }
