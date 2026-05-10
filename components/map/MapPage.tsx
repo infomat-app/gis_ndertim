@@ -356,6 +356,10 @@ export default function MapPage({ profile }: Props) {
     setBufferCenter(null)
     setInfoFeatures([])
     setXYMarker(null)
+    if (tool !== null) {
+      setActiveLayer(null)
+      setDrawingCoords([])
+    }
   }
 
   const handleToolMapClick = useCallback((lat: number, lng: number) => {
@@ -401,6 +405,7 @@ export default function MapPage({ profile }: Props) {
             if (!canEditLayer(l.id)) return
             setActiveLayer(a => a?.id === l.id ? null : l)
             setDrawingCoords([])
+            setActiveTool(null)
           }}
           onToggleVisibility={(id, v) => setLayers(prev => prev.map(l => l.id === id ? { ...l, visible: v } : l))}
           onAddLayer={() => { setEditingLayer(null); setShowLayerEditor(true) }}
