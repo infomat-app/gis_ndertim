@@ -19,7 +19,10 @@ export default function FieldFeaturePopup({ feature, layer, isOwn, onClose, onSa
   )
   const [saving, setSaving] = useState(false)
 
-  const firstVal = Object.values(feature.properties ?? {})[0]
+  const firstVal = Object.values(feature.properties ?? {}).find(v => {
+    const s = String(v ?? '')
+    return s.length > 0 && s.length < 120 && !s.startsWith('data:')
+  })
   const title = firstVal ? String(firstVal) : `#${feature.id.slice(0, 6)}`
   const [lng, lat] = feature.geometry.coordinates as [number, number]
 

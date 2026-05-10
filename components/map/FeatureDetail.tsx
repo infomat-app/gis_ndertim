@@ -52,7 +52,10 @@ export default function FeatureDetail({ feature, layer, canEdit, onClose, onDele
   const [lng, lat] = isPoint ? geomCoords as [number, number] : [null, null]
 
   const createdAt = feature.created_at ? new Date(feature.created_at).toLocaleString('sq-AL') : '—'
-  const firstVal = Object.values(feature.properties ?? {})[0]
+  const firstVal = Object.values(feature.properties ?? {}).find(v => {
+    const s = String(v ?? '')
+    return s.length > 0 && s.length < 120 && !s.startsWith('data:')
+  })
   const title = firstVal ? String(firstVal) : layer.name
 
   return (
