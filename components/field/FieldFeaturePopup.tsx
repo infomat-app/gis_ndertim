@@ -50,58 +50,41 @@ export default function FieldFeaturePopup({ feature, layer, isOwn, onClose, onSa
     <>
       <div className="fixed inset-0 z-[1999]" onClick={onClose} />
 
-      <div className="fixed bottom-0 left-0 right-0 z-[2000] flex flex-col bg-s1 border-t border-b1 rounded-t-2xl shadow-2xl"
-        style={{ maxHeight: '60vh' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-[2000] flex flex-col bg-s1 border-t border-b1 rounded-t-xl shadow-2xl"
+        style={{ maxHeight: '48vh' }}>
 
         {/* Handle */}
-        <div className="flex justify-center pt-2 pb-0.5 shrink-0">
-          <div className="w-8 h-1 rounded-full bg-b2" />
+        <div className="flex justify-center pt-1.5 shrink-0">
+          <div className="w-7 h-0.5 rounded-full bg-b2" />
         </div>
 
         {/* Header */}
-        <div className="px-4 pt-2 pb-3 shrink-0">
-          <div className="flex items-center gap-2.5">
-            {/* Color accent */}
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: layer.color + '22', border: `1.5px solid ${layer.color}55` }}>
-              <div className="w-3 h-3 rounded-full" style={{ background: layer.color }} />
-            </div>
-
-            {/* Title + layer */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-txt leading-tight truncate">{title}</p>
-              <p className="text-[11px] text-txt3 font-mono">{layer.name}</p>
-            </div>
-
-            {/* Owner badge or "Tjetër" */}
+        <div className="px-3 pt-1.5 pb-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: layer.color }} />
+            <p className="text-xs font-semibold text-txt flex-1 truncate">{title}</p>
             {!isOwn && (
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-s3 text-txt3 border border-b2 shrink-0">
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-s3 text-txt3 border border-b2 shrink-0">
                 {feature.profile?.full_name?.split(' ')[0] ?? 'Tjetër'}
               </span>
             )}
-
-            {/* Close */}
             <button onClick={onClose}
-              className="w-7 h-7 rounded-lg bg-s3 border border-b2 flex items-center justify-center text-txt3 hover:text-txt transition-colors shrink-0">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              className="w-6 h-6 rounded-md bg-s3 border border-b2 flex items-center justify-center text-txt3 shrink-0">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             </button>
           </div>
 
           {/* Tab bar */}
-          <div className="flex gap-1 mt-2.5">
-            <div className="flex gap-1 bg-s2 border border-b1 rounded-lg p-0.5 flex-1">
+          <div className="flex gap-1 mt-1.5">
+            <div className="flex gap-0.5 bg-s2 border border-b1 rounded-md p-0.5 flex-1">
               {allTabs.map(t => (
-                <button
-                  key={t.id}
+                <button key={t.id}
                   onClick={() => setTab(t.id as typeof tab)}
-                  className={`flex-1 py-1 rounded-md text-[11px] font-mono font-semibold transition-all ${
-                    tab === t.id
-                      ? 'bg-acc text-white shadow-sm'
-                      : 'text-txt3 hover:text-txt'
-                  }`}
-                >
+                  className={`flex-1 py-0.5 rounded text-[11px] font-mono font-medium transition-all ${
+                    tab === t.id ? 'bg-acc text-white' : 'text-txt3 hover:text-txt'
+                  }`}>
                   {t.label}
                 </button>
               ))}
@@ -109,10 +92,9 @@ export default function FieldFeaturePopup({ feature, layer, isOwn, onClose, onSa
             {isOwn && (
               <button
                 onClick={() => { if (confirm('Fshi këtë objekt?')) onDelete() }}
-                className="w-8 h-8 rounded-lg bg-err/10 border border-err/30 flex items-center justify-center text-err hover:bg-err/20 transition-colors shrink-0"
-                title="Fshi"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                className="w-7 h-7 rounded-md bg-err/10 border border-err/30 flex items-center justify-center text-err shrink-0"
+                title="Fshi">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                 </svg>
@@ -126,34 +108,30 @@ export default function FieldFeaturePopup({ feature, layer, isOwn, onClose, onSa
 
           {/* INFO */}
           {tab === 'info' && (
-            <div className="px-4 py-3 space-y-0">
+            <div className="px-3 py-1">
               {fields.length === 0 && Object.keys(feature.properties ?? {}).length === 0 && (
-                <p className="text-xs text-txt3 font-mono text-center py-4">Nuk ka atribute.</p>
+                <p className="text-xs text-txt3 font-mono text-center py-3">Nuk ka atribute.</p>
               )}
               {(fields.length > 0
                 ? fields.sort((a, b) => a.sort_order - b.sort_order).map(f => ({
                     label: f.field_label,
                     value: f.field_type === 'boolean'
-                      ? (feature.properties?.[f.field_name] ? 'Po ✓' : 'Jo ✗')
+                      ? (feature.properties?.[f.field_name] ? 'Po' : 'Jo')
                       : String(feature.properties?.[f.field_name] ?? '—'),
                   }))
-                : Object.entries(feature.properties ?? {}).map(([k, v]) => ({ label: k, value: String(v ?? '—') }))
+                : Object.entries(feature.properties ?? {})
+                    .filter(([, v]) => { const s = String(v ?? ''); return !s.startsWith('data:') && s.length < 300 })
+                    .map(([k, v]) => ({ label: k, value: String(v ?? '—') }))
               ).map(({ label, value }, i) => (
-                <div key={i} className="flex items-center justify-between gap-3 py-2 border-b border-b1 last:border-0">
-                  <span className="text-[11px] text-txt3 font-mono uppercase tracking-wide shrink-0">{label}</span>
-                  <span className="text-[12px] text-txt font-medium text-right break-all">{value}</span>
+                <div key={i} className="flex items-center justify-between gap-2 py-1.5 border-b border-b1 last:border-0">
+                  <span className="text-[10px] text-txt3 font-mono uppercase tracking-wide shrink-0">{label}</span>
+                  <span className="text-[11px] text-txt font-medium text-right break-all max-w-[60%]">{value}</span>
                 </div>
               ))}
-
-              {/* Meta row */}
-              <div className="flex items-center justify-between gap-3 py-2 border-b border-b1">
-                <span className="text-[11px] text-txt3 font-mono uppercase tracking-wide">Lat / Lng</span>
-                <span className="text-[11px] text-txt2 font-mono">{lat.toFixed(5)}, {lng.toFixed(5)}</span>
-              </div>
               {feature.profile && (
-                <div className="flex items-center justify-between gap-3 py-2">
-                  <span className="text-[11px] text-txt3 font-mono uppercase tracking-wide">Nga</span>
-                  <span className="text-[12px] text-txt">{feature.profile.full_name ?? feature.profile.email}</span>
+                <div className="flex items-center justify-between gap-2 py-1.5">
+                  <span className="text-[10px] text-txt3 font-mono uppercase tracking-wide">Nga</span>
+                  <span className="text-[11px] text-txt2">{feature.profile.full_name ?? feature.profile.email}</span>
                 </div>
               )}
             </div>
@@ -161,47 +139,44 @@ export default function FieldFeaturePopup({ feature, layer, isOwn, onClose, onSa
 
           {/* EDIT */}
           {tab === 'edit' && isOwn && (
-            <div className="px-4 py-3 space-y-3">
+            <div className="px-3 py-2 space-y-2.5">
               {fields.sort((a, b) => a.sort_order - b.sort_order).map(f => (
                 <div key={f.id}>
-                  <label className="block text-[11px] font-mono text-txt3 uppercase tracking-wide mb-1.5">
+                  <label className="block text-[10px] font-mono text-txt3 uppercase tracking-wide mb-1">
                     {f.field_label}{f.required && <span className="text-err ml-1">*</span>}
                   </label>
                   {f.field_type === 'select' ? (
                     <select value={values[f.field_name]}
                       onChange={e => setValues(p => ({ ...p, [f.field_name]: e.target.value }))}
-                      className="w-full bg-s2 border border-b1 rounded-xl px-3 py-2.5 text-sm text-txt outline-none focus:border-acc transition-colors">
+                      className="w-full bg-s2 border border-b1 rounded-lg px-2.5 py-2 text-xs text-txt outline-none focus:border-acc">
                       <option value="">— Zgjidh —</option>
                       {(f.field_options ?? []).map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : f.field_type === 'boolean' ? (
-                    <div className="flex gap-2">
-                      {['true', 'false'].map(val => {
-                        const active = values[f.field_name] === val
-                        return (
-                          <button key={val} type="button"
-                            onClick={() => setValues(p => ({ ...p, [f.field_name]: val }))}
-                            className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all active:scale-95 ${
-                              active
-                                ? (val === 'true' ? 'bg-green-600 text-white border-green-600' : 'bg-err text-white border-err')
-                                : 'bg-s2 border-b1 text-txt3'
-                            }`}>
-                            {val === 'true' ? 'Po' : 'Jo'}
-                          </button>
-                        )
-                      })}
+                    <div className="flex gap-1.5">
+                      {['true', 'false'].map(val => (
+                        <button key={val} type="button"
+                          onClick={() => setValues(p => ({ ...p, [f.field_name]: val }))}
+                          className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-all ${
+                            values[f.field_name] === val
+                              ? (val === 'true' ? 'bg-green-600 text-white border-green-600' : 'bg-err text-white border-err')
+                              : 'bg-s2 border-b1 text-txt3'
+                          }`}>
+                          {val === 'true' ? 'Po' : 'Jo'}
+                        </button>
+                      ))}
                     </div>
                   ) : f.field_type === 'textarea' ? (
                     <textarea value={values[f.field_name]}
                       onChange={e => setValues(p => ({ ...p, [f.field_name]: e.target.value }))}
-                      rows={3}
-                      className="w-full bg-s2 border border-b1 rounded-xl px-3 py-2.5 text-sm text-txt outline-none focus:border-acc transition-colors resize-none" />
+                      rows={2}
+                      className="w-full bg-s2 border border-b1 rounded-lg px-2.5 py-2 text-xs text-txt outline-none focus:border-acc resize-none" />
                   ) : (
                     <input
                       type={f.field_type === 'number' ? 'number' : f.field_type === 'date' ? 'date' : 'text'}
                       value={values[f.field_name]}
                       onChange={e => setValues(p => ({ ...p, [f.field_name]: e.target.value }))}
-                      className="w-full bg-s2 border border-b1 rounded-xl px-3 py-2.5 text-sm text-txt outline-none focus:border-acc transition-colors" />
+                      className="w-full bg-s2 border border-b1 rounded-lg px-2.5 py-2 text-xs text-txt outline-none focus:border-acc" />
                   )}
                 </div>
               ))}
@@ -210,14 +185,13 @@ export default function FieldFeaturePopup({ feature, layer, isOwn, onClose, onSa
 
           {/* GEOM */}
           {tab === 'geom' && (
-            <div className="px-4 py-3 space-y-0">
+            <div className="px-3 py-1">
               {[
-                { label: 'Lat', value: lat.toFixed(7) },
-                { label: 'Lng', value: lng.toFixed(7) },
-                { label: 'ID',  value: feature.id.slice(0, 16) + '…' },
+                { label: 'Lat', value: lat.toFixed(6) },
+                { label: 'Lng', value: lng.toFixed(6) },
               ].map(({ label, value }) => (
-                <div key={label} className="flex items-center justify-between gap-3 py-2 border-b border-b1 last:border-0">
-                  <span className="text-[11px] text-txt3 font-mono uppercase tracking-wide">{label}</span>
+                <div key={label} className="flex items-center justify-between gap-2 py-1.5 border-b border-b1 last:border-0">
+                  <span className="text-[10px] text-txt3 font-mono uppercase tracking-wide">{label}</span>
                   <span className="text-[11px] text-txt2 font-mono">{value}</span>
                 </div>
               ))}
@@ -227,20 +201,14 @@ export default function FieldFeaturePopup({ feature, layer, isOwn, onClose, onSa
 
         {/* Save footer */}
         {tab === 'edit' && isOwn && fields.length > 0 && (
-          <div className="shrink-0 px-4 py-3 border-t border-b1 flex gap-2">
+          <div className="shrink-0 px-3 py-2 border-t border-b1 flex gap-2">
             <button onClick={() => setTab('info')}
-              className="px-4 py-2.5 rounded-xl border border-b2 text-txt2 text-sm font-mono hover:bg-s3 transition-colors">
+              className="px-3 py-2 rounded-lg border border-b2 text-txt2 text-xs font-mono hover:bg-s3 transition-colors">
               Anulo
             </button>
             <button onClick={handleSave} disabled={saving}
-              className="flex-1 py-2.5 rounded-xl bg-acc text-white font-semibold text-sm disabled:opacity-50 active:scale-[.98] transition-all hover:bg-[#1d4ed8]">
-              {saving
-                ? <span className="flex items-center justify-center gap-2">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10" strokeOpacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
-                    Duke ruajtur...
-                  </span>
-                : 'Ruaj Ndryshimet'
-              }
+              className="flex-1 py-2 rounded-lg bg-acc text-white font-semibold text-xs disabled:opacity-50 active:scale-[.98] transition-all">
+              {saving ? 'Duke ruajtur...' : 'Ruaj'}
             </button>
           </div>
         )}
