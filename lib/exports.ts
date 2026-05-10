@@ -16,11 +16,33 @@ export function exportGeoJSON(layer: Layer, features: Feature[]) {
   download(JSON.stringify(fc, null, 2), `${layer.name}.geojson`, 'application/json')
 }
 
+function formatCsvValue(value: unknown, type?: string): string {
+  if (value == null) return ''
+  if (type === 'boolean') return value ? 'Po' : 'Jo'
+  if (type === 'multiselect') {
+    if (Array.isArray(value)) return value.join(', ')
+    try { const a = JSON.parse(String(value)); return Array.isArray(a) ? a.join(', ') : String(value) }
+    catch { return String(value) }
+  }
+  const s = String(value)
+  if (s.startsWith('data:')) return '[Media]'
+  return s
+}
+
 export function exportCSV(layer: Layer, features: Feature[]) {
   if (!features.length) return
-  const seen1 = new Set<string>(); const propKeys: string[] = []; features.flatMap(f => Object.keys(f.properties ?? {})).forEach(k => { if (!seen1.has(k)) { seen1.add(k); propKeys.push(k) } })
   const isPoint = layer.geom_type === 'Point'
-  const headers = isPoint ? ['lat', 'lng', ...propKeys] : propKeys
+
+  // Use layer.fields for column order + labels if available
+  const cols = (layer.fields ?? []).length > 0
+    ? [...(layer.fields ?? [])].sort((a, b) => a.sort_order - b.sort_order).filter(f => f.field_type !== 'hidden')
+    : (() => {
+        const seen = new Set<string>(); const keys: string[] = []
+        features.flatMap(f => Object.keys(f.properties ?? {})).forEach(k => { if (!seen.has(k)) { seen.add(k); keys.push(k) } })
+        return keys.map(k => ({ field_name: k, field_label: k, field_type: undefined as unknown as never }))
+      })()
+
+  const headers = isPoint ? ['Lat', 'Lng', ...cols.map(c => c.field_label)] : cols.map(c => c.field_label)
 
   const rows = features.map(f => {
     const row: string[] = []
@@ -28,7 +50,7 @@ export function exportCSV(layer: Layer, features: Feature[]) {
       const [lng, lat] = f.geometry.coordinates as [number, number]
       row.push(String(lat), String(lng))
     }
-    for (const k of propKeys) row.push(String(f.properties?.[k] ?? ''))
+    for (const c of cols) row.push(formatCsvValue(f.properties?.[c.field_name], c.field_type))
     return row
   })
 

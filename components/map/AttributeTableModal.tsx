@@ -1,7 +1,23 @@
 'use client'
 import { useMemo, useState, useCallback } from 'react'
-import type { Feature, Layer } from '@/lib/types'
+import type { Feature, Layer, FieldType } from '@/lib/types'
 import { exportCSV } from '@/lib/exports'
+
+function formatCell(value: unknown, type?: FieldType): string {
+  if (value == null || value === '') return '—'
+  if (type === 'boolean') return value ? 'Po' : 'Jo'
+  if (type === 'multiselect') {
+    if (Array.isArray(value)) return value.join(', ') || '—'
+    try { const a = JSON.parse(String(value)); return Array.isArray(a) ? a.join(', ') || '—' : String(value) }
+    catch { return String(value) }
+  }
+  const s = String(value)
+  if (s.startsWith('data:image')) return '📷 [Foto]'
+  if (s.startsWith('data:video')) return '🎬 [Video]'
+  if (s.startsWith('data:audio')) return '🎙️ [Audio]'
+  if (s.startsWith('data:')) return '[Media]'
+  return s
+}
 
 interface Props {
   layer: Layer
@@ -21,14 +37,22 @@ export default function AttributeTableModal({
   const [selected,  setSelected]  = useState<Set<string>>(new Set())
   const [lastClick, setLastClick] = useState<string | null>(null)
 
+  // Build columns from layer.fields definition (label + sort_order).
+  // Fall back to property keys when layer has no fields configured.
   const columns = useMemo(() => {
+    if ((layer.fields ?? []).length > 0) {
+      return [...(layer.fields ?? [])]
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .filter(f => f.field_type !== 'hidden')
+        .map(f => ({ key: f.field_name, label: f.field_label, type: f.field_type }))
+    }
     const keys: string[] = []
     const seen = new Set<string>()
     features.forEach(f => Object.keys(f.properties ?? {}).forEach(k => {
       if (!seen.has(k)) { seen.add(k); keys.push(k) }
     }))
-    return keys
-  }, [features])
+    return keys.map(k => ({ key: k, label: k, type: undefined }))
+  }, [layer.fields, features])
 
   const filtered = useMemo(() => {
     if (!search.trim()) return features
@@ -146,8 +170,8 @@ export default function AttributeTableModal({
                 </>
               )}
               {columns.map(col => (
-                <th key={col} className="text-left px-3 py-1.5 text-blue-600 font-semibold border-b border-r border-gray-200 whitespace-nowrap uppercase tracking-wide">
-                  {col}
+                <th key={col.key} className="text-left px-3 py-1.5 text-blue-600 font-semibold border-b border-r border-gray-200 whitespace-nowrap uppercase tracking-wide">
+                  {col.label}
                 </th>
               ))}
             </tr>
@@ -155,7 +179,7 @@ export default function AttributeTableModal({
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={columns.length + 3} className="text-center py-8 text-gray-400 text-xs">
+                <td colSpan={columns.length + (layer.geom_type === 'Point' ? 3 : 1)} className="text-center py-8 text-gray-400 text-xs">
                   Nuk ka rezultate.
                 </td>
               </tr>
@@ -193,8 +217,8 @@ export default function AttributeTableModal({
                     </>
                   )}
                   {columns.map(col => (
-                    <td key={col} className={`px-3 py-1 border-r border-gray-100 max-w-[180px] truncate ${isSelected ? 'text-yellow-900 font-medium' : 'text-gray-700'}`}>
-                      {String(f.properties?.[col] ?? '—')}
+                    <td key={col.key} className={`px-3 py-1 border-r border-gray-100 max-w-[180px] truncate ${isSelected ? 'text-yellow-900 font-medium' : 'text-gray-700'}`}>
+                      {formatCell(f.properties?.[col.key], col.type as FieldType | undefined)}
                     </td>
                   ))}
                 </tr>
