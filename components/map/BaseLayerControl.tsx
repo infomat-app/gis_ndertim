@@ -112,7 +112,7 @@ export default function BaseLayerControl({ activeId, onChange }: Props) {
     <>
       <TileUpdater activeId={activeId} />
 
-      <div ref={containerRef} className="absolute bottom-10 right-2 z-[1000]">
+      <div ref={containerRef} className="absolute bottom-16 right-2 z-[1000]">
         <div className="relative flex flex-col items-end">
 
           {/* Dropdown panel — opens upward */}

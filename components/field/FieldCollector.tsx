@@ -1,9 +1,10 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase'
-import type { Profile, Layer, Feature, LayerField } from '@/lib/types'
+import type { Profile, Layer, Feature } from '@/lib/types'
 import Navbar from '@/components/ui/Navbar'
+import FieldFeaturePopup from './FieldFeaturePopup'
 
 const FieldMap = dynamic(() => import('./FieldMap'), { ssr: false })
 
@@ -26,27 +27,51 @@ export default function FieldCollector({ profile, layers }: Props) {
   const [formValues,     setFormValues]   = useState<Record<string, string>>({})
   const [saving,         setSaving]       = useState(false)
   const [recentItems,    setRecentItems]  = useState<Feature[]>([])
-  const [myLocation,     setMyLocation]   = useState<[number, number] | null>(null)
-  const [locateTrigger,  setLocateTrigger] = useState(0)
-  const [locating,       setLocating]     = useState(false)
+  const [myLocation,      setMyLocation]    = useState<[number, number] | null>(null)
+  const [locateTrigger,   setLocateTrigger] = useState(0)
+  const [locating,        setLocating]      = useState(false)
+  const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null)
 
   const handleLocated = useCallback((pos: [number, number]) => {
     setMyLocation(pos)
     setLocating(false)
   }, [])
 
-  // Load recent features for this user
+  // Load all features for the layer (with profile info)
   useEffect(() => {
     if (!activeLayer) return
     supabase
       .from('features')
-      .select('*')
+      .select('*, profile:profiles(full_name,email)')
       .eq('layer_id', activeLayer.id)
-      .eq('created_by', profile.id)
       .order('created_at', { ascending: false })
-      .limit(10)
-      .then(({ data }) => setRecentItems(data ?? []))
+      .then(({ data }) => {
+        const all = data ?? []
+        setFeatures(all)
+        setRecentItems(all.filter(f => f.created_by === profile.id).slice(0, 10))
+      })
   }, [activeLayer, supabase, profile.id])
+
+  const handleFeatureUpdate = async (feature: Feature, properties: Record<string, unknown>) => {
+    const { data } = await supabase
+      .from('features')
+      .update({ properties })
+      .eq('id', feature.id)
+      .select('*, profile:profiles(full_name,email)')
+      .single()
+    if (data) {
+      setFeatures(prev => prev.map(f => f.id === data.id ? data : f))
+      setRecentItems(prev => prev.map(f => f.id === data.id ? data : f))
+      setSelectedFeature(data)
+    }
+  }
+
+  const handleFeatureDelete = async (feature: Feature) => {
+    await supabase.from('features').delete().eq('id', feature.id)
+    setFeatures(prev => prev.filter(f => f.id !== feature.id))
+    setRecentItems(prev => prev.filter(f => f.id !== feature.id))
+    setSelectedFeature(null)
+  }
 
   const initForm = (layer: Layer) => {
     const init: Record<string, string> = {}
@@ -61,9 +86,10 @@ export default function FieldCollector({ profile, layers }: Props) {
   }
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
+    if (selectedFeature) { setSelectedFeature(null); return }
     setPendingCoords([lat, lng])
     setStep('form')
-  }, [])
+  }, [selectedFeature])
 
   const handleGPSCapture = useCallback((lat: number, lng: number) => {
     setGpsCoords([lat, lng])
@@ -169,9 +195,11 @@ export default function FieldCollector({ profile, layers }: Props) {
               gpsRequest={gpsRequest}
               myLocation={myLocation}
               locateTrigger={locateTrigger}
+              selectedFeatureId={selectedFeature?.id}
               onMapClick={handleMapClick}
               onGPSCapture={handleGPSCapture}
               onLocated={handleLocated}
+              onFeatureClick={f => { setSelectedFeature(f); setStep('map') }}
             />
             {step === 'done' && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -371,6 +399,18 @@ export default function FieldCollector({ profile, layers }: Props) {
           )}
 
         </div>
+      )}
+
+      {/* Feature popup */}
+      {selectedFeature && activeLayer && (
+        <FieldFeaturePopup
+          feature={selectedFeature}
+          layer={activeLayer}
+          isOwn={selectedFeature.created_by === profile.id}
+          onClose={() => setSelectedFeature(null)}
+          onSave={props => handleFeatureUpdate(selectedFeature, props)}
+          onDelete={() => handleFeatureDelete(selectedFeature)}
+        />
       )}
     </div>
   )

@@ -13,10 +13,11 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 })
 
-function dotIcon(color: string, size = 16) {
+function dotIcon(color: string, size = 16, selected = false) {
+  const glow = selected ? `box-shadow:0 0 0 3px white,0 0 0 5px ${color},0 2px 10px rgba(0,0,0,.4)` : `box-shadow:0 0 0 1.5px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.3)`
   return L.divIcon({
     className: '',
-    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,.9);box-shadow:0 0 0 1.5px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.3)"></div>`,
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,.9);${glow}"></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   })
@@ -119,15 +120,17 @@ interface Props {
   gpsRequest: number
   myLocation: [number, number] | null
   locateTrigger: number
+  selectedFeatureId?: string | null
   onMapClick: (lat: number, lng: number) => void
   onGPSCapture: (lat: number, lng: number) => void
   onLocated: (pos: [number, number]) => void
+  onFeatureClick?: (f: Feature) => void
 }
 
 export default function FieldMap({
   layer, features, pendingCoords, gpsCoords,
   gpsRequest, myLocation, locateTrigger,
-  onMapClick, onGPSCapture, onLocated,
+  selectedFeatureId, onMapClick, onGPSCapture, onLocated, onFeatureClick,
 }: Props) {
   const [baseLayerId, setBaseLayerId] = useState('google_satellite')
 
@@ -144,7 +147,16 @@ export default function FieldMap({
         {/* Existing features */}
         {features.map(f => {
           const [lng, lat] = f.geometry.coordinates as [number, number]
-          return <Marker key={f.id} position={[lat, lng]} icon={dotIcon(layer.color)} />
+          const isSelected = f.id === selectedFeatureId
+          return (
+            <Marker
+              key={f.id}
+              position={[lat, lng]}
+              icon={dotIcon(layer.color, isSelected ? 22 : 16, isSelected)}
+              zIndexOffset={isSelected ? 1000 : 0}
+              eventHandlers={{ click: () => onFeatureClick?.(f) }}
+            />
+          )
         })}
 
         {/* Pending location (orange pulse — about to save) */}

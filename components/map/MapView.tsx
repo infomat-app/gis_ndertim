@@ -443,7 +443,7 @@ export default function MapView({
       onClick={handleLocate}
       disabled={locating}
       title="Vendndodhja ime"
-      style={{ position: 'absolute', bottom: 136, right: 8, zIndex: 1000 }}
+      style={{ position: 'absolute', bottom: 172, right: 8, zIndex: 1000 }}
       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shadow-lg transition-all text-xs font-semibold
         ${locating
           ? 'bg-blue-400 text-white cursor-wait opacity-80'
@@ -469,7 +469,7 @@ export default function MapView({
     {/* Coordinates label — left of Vendodhja button, only on md+ */}
     {myLocation && (
       <div
-        style={{ position: 'absolute', bottom: 142, right: 150, zIndex: 1000 }}
+        style={{ position: 'absolute', bottom: 178, right: 150, zIndex: 1000 }}
         className="hidden md:block bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg px-2.5 py-1 text-[11px] font-mono text-gray-600 shadow-sm pointer-events-none"
       >
         {myLocation[0].toFixed(5)}, {myLocation[1].toFixed(5)}
