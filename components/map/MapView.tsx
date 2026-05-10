@@ -1,9 +1,10 @@
 'use client'
 import { useEffect, useRef, useCallback, useState } from 'react'
 import {
-  MapContainer, Marker, Polyline, Polygon,
+  MapContainer, Marker, Polyline, Polygon, Circle,
   useMapEvents, useMap, Tooltip,
 } from 'react-leaflet'
+import type { MapTool } from './MapToolbar'
 import L from 'leaflet'
 import type { Layer, Feature, PointStyle, GeoJSONGeometry } from '@/lib/types'
 import BaseLayerControl from './BaseLayerControl'
@@ -49,6 +50,24 @@ const gpsIcon = L.divIcon({
   html: `<div style="width:18px;height:18px;border-radius:50%;background:#2d8bff;border:3px solid white;box-shadow:0 0 0 2px #2d8bff55,0 2px 8px rgba(0,0,0,.5)"></div>`,
   iconSize: [18, 18],
   iconAnchor: [9, 9],
+})
+
+const measureDotIcon = (isFirst: boolean) => L.divIcon({
+  className: '',
+  html: `<div style="width:8px;height:8px;border-radius:50%;background:${isFirst ? '#2563eb' : '#fff'};border:2px solid #2563eb;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>`,
+  iconSize: [8, 8],
+  iconAnchor: [4, 4],
+})
+
+const xyPinIcon = L.divIcon({
+  className: '',
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="30" viewBox="0 0 22 30" style="filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))">
+    <path d="M11 0C6.03 0 2 4.03 2 9c0 7 9 21 9 21S20 16 20 9c0-4.97-4.03-9-9-9z" fill="#7c3aed"/>
+    <circle cx="11" cy="9" r="4" fill="white"/>
+    <circle cx="11" cy="9" r="2" fill="#7c3aed"/>
+  </svg>`,
+  iconSize: [22, 30],
+  iconAnchor: [11, 30],
 })
 
 const myLocPinIcon = L.divIcon({
@@ -161,20 +180,22 @@ function VertexEditor({
 // ---- Map event handler inner component ----
 function DrawHandler({
   activeLayer,
+  activeTool,
   onMapClick,
   onMapDblClick,
 }: {
   activeLayer: { geom_type: string } | null
+  activeTool: MapTool | null
   onMapClick: (lat: number, lng: number) => void
   onMapDblClick: () => void
 }) {
   const map = useMapEvents({
     click(e) {
-      if (!activeLayer) return
+      if (!activeLayer || activeTool) return
       onMapClick(e.latlng.lat, e.latlng.lng)
     },
     dblclick(e) {
-      if (!activeLayer) return
+      if (!activeLayer || activeTool) return
       e.originalEvent.preventDefault()
       e.originalEvent.stopPropagation()
       onMapDblClick()
@@ -182,9 +203,56 @@ function DrawHandler({
   })
 
   useEffect(() => {
-    map.getContainer().style.cursor = activeLayer ? 'crosshair' : ''
-  }, [activeLayer, map])
+    if (!activeTool) {
+      map.getContainer().style.cursor = activeLayer ? 'crosshair' : ''
+    }
+  }, [activeLayer, activeTool, map])
 
+  return null
+}
+
+// ---- Tool click handler ----
+function ToolHandler({
+  activeTool,
+  onToolClick,
+}: {
+  activeTool: MapTool | null
+  onToolClick: (lat: number, lng: number) => void
+}) {
+  const map = useMapEvents({
+    click(e) {
+      if (!activeTool || activeTool === 'xy') return
+      onToolClick(e.latlng.lat, e.latlng.lng)
+    },
+  })
+
+  useEffect(() => {
+    if (!activeTool) return
+    const cursor = activeTool === 'info' ? 'help' : activeTool === 'xy' ? 'default' : 'crosshair'
+    map.getContainer().style.cursor = cursor
+  }, [activeTool, map])
+
+  return null
+}
+
+// ---- Fly to a point ----
+function FlyToHandler({
+  point,
+  trigger,
+  onDone,
+}: {
+  point: [number, number] | null
+  trigger: number
+  onDone: () => void
+}) {
+  const map = useMap()
+  const prevRef = useRef(0)
+  useEffect(() => {
+    if (!point || trigger === 0 || trigger === prevRef.current) return
+    prevRef.current = trigger
+    map.flyTo(point, 16, { duration: 1.5 })
+    onDone()
+  }, [trigger, point, map, onDone])
   return null
 }
 
@@ -288,6 +356,16 @@ interface Props {
   onGPSCapture: (lat: number, lng: number) => void
   onFeatureClick: (f: Feature) => void
   onGeometryUpdate?: (featureId: string, newGeom: GeoJSONGeometry) => void
+  // Tool props
+  activeTool?: MapTool | null
+  measurePts?: [number, number][]
+  bufferCenter?: [number, number] | null
+  bufferRadius?: number
+  xyMarker?: [number, number] | null
+  flyToPoint?: [number, number] | null
+  flyToTrigger?: number
+  onToolMapClick?: (lat: number, lng: number) => void
+  onFlyDone?: () => void
 }
 
 export default function MapView({
@@ -296,6 +374,15 @@ export default function MapView({
   selectedFeatureId, selectedFeature,
   onZoomDone, onMapClick, onMapDblClick, onGPSCapture,
   onFeatureClick, onGeometryUpdate,
+  activeTool = null,
+  measurePts = [],
+  bufferCenter = null,
+  bufferRadius = 100,
+  xyMarker = null,
+  flyToPoint = null,
+  flyToTrigger = 0,
+  onToolMapClick,
+  onFlyDone,
 }: Props) {
 
   const [baseLayerId,   setBaseLayerId]   = useState('osm')
@@ -430,11 +517,46 @@ export default function MapView({
       {/* "My Location" pin marker */}
       {myLocation && <Marker position={myLocation} icon={myLocPinIcon} />}
 
+      {/* Measure overlay */}
+      {measurePts.length >= 2 && (activeTool === 'measure-dist' || activeTool === 'measure-area') && (
+        <Polyline positions={measurePts} color="#2563eb" weight={2} dashArray="8 4"/>
+      )}
+      {measurePts.length >= 3 && activeTool === 'measure-area' && (
+        <Polygon positions={measurePts} color="#2563eb" fillColor="#3b82f6" fillOpacity={0.15} weight={2} dashArray="8 4"/>
+      )}
+      {(activeTool === 'measure-dist' || activeTool === 'measure-area') && measurePts.map((pt, i) => (
+        <Marker key={`mp-${i}`} position={pt} icon={measureDotIcon(i === 0)}/>
+      ))}
+
+      {/* Buffer circle */}
+      {bufferCenter && bufferRadius > 0 && (
+        <Circle
+          center={bufferCenter}
+          radius={bufferRadius}
+          color="#f59e0b"
+          fillColor="#fbbf24"
+          fillOpacity={0.15}
+          weight={2}
+          dashArray="6 4"
+        />
+      )}
+
+      {/* XY marker */}
+      {xyMarker && <Marker position={xyMarker} icon={xyPinIcon}/>}
+
       <DrawHandler
         activeLayer={activeLayer}
+        activeTool={activeTool}
         onMapClick={onMapClick}
         onMapDblClick={onMapDblClick}
       />
+      <ToolHandler
+        activeTool={activeTool}
+        onToolClick={onToolMapClick ?? (() => {})}
+      />
+      {flyToPoint && (
+        <FlyToHandler point={flyToPoint} trigger={flyToTrigger} onDone={onFlyDone ?? (() => {})}/>
+      )}
       <GPSHandler gpsRequest={gpsRequest} onCapture={onGPSCapture} />
       <ZoomToLayer layerId={zoomToLayerId} features={features} onDone={onZoomDone} />
       <ZoomToFeature feature={zoomToFeature} onDone={onZoomDone} />
