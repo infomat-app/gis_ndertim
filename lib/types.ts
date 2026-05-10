@@ -1,4 +1,5 @@
 export type Role = 'admin' | 'editor' | 'field' | 'viewer'
+export type LayerPermLevel = 'none' | 'view' | 'edit'
 export type GeomType = 'Point' | 'LineString' | 'Polygon'
 export type FieldType = 'text' | 'number' | 'date' | 'select' | 'textarea' | 'boolean'
 

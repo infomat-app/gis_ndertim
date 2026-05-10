@@ -100,12 +100,19 @@ interface Props {
 export default function BaseLayerControl({ activeId, onChange }: Props) {
   const [open, setOpen] = useState(false)
   const active = BASE_LAYERS.find(l => l.id === activeId)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    L.DomEvent.disableClickPropagation(containerRef.current)
+    L.DomEvent.disableScrollPropagation(containerRef.current)
+  }, [])
 
   return (
     <>
       <TileUpdater activeId={activeId} />
 
-      <div className="absolute bottom-8 right-2 z-[1000]">
+      <div ref={containerRef} className="absolute bottom-8 right-2 z-[1000]">
         <div className="relative flex flex-col items-end">
 
           {/* Dropdown panel — opens upward */}

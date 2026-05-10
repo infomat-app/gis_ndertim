@@ -26,6 +26,14 @@ export default function FieldCollector({ profile, layers }: Props) {
   const [formValues,     setFormValues]   = useState<Record<string, string>>({})
   const [saving,         setSaving]       = useState(false)
   const [recentItems,    setRecentItems]  = useState<Feature[]>([])
+  const [myLocation,     setMyLocation]   = useState<[number, number] | null>(null)
+  const [locateTrigger,  setLocateTrigger] = useState(0)
+  const [locating,       setLocating]     = useState(false)
+
+  const handleLocated = useCallback((pos: [number, number]) => {
+    setMyLocation(pos)
+    setLocating(false)
+  }, [])
 
   // Load recent features for this user
   useEffect(() => {
@@ -147,22 +155,24 @@ export default function FieldCollector({ profile, layers }: Props) {
         </div>
       )}
 
-      {/* Step: MAP */}
-      {(step === 'map' || step === 'done') && activeLayer && (
+      {/* MAP + FORM — harta qëndron gjithmonë kur activeLayer është zgjedhur */}
+      {activeLayer && step !== 'select' && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Map takes most of the screen */}
-          <div className="flex-1 relative">
+
+          {/* Harta — flex-1 në map/done, e ngushtë në form */}
+          <div className={`relative shrink-0 ${step === 'form' ? 'h-[42%]' : 'flex-1'}`}>
             <FieldMap
               layer={activeLayer}
               features={features}
               pendingCoords={pendingCoords}
               gpsCoords={gpsCoords}
               gpsRequest={gpsRequest}
+              myLocation={myLocation}
+              locateTrigger={locateTrigger}
               onMapClick={handleMapClick}
               onGPSCapture={handleGPSCapture}
+              onLocated={handleLocated}
             />
-
-            {/* Success flash */}
             {step === 'done' && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="bg-acc/95 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-2xl">
@@ -172,75 +182,75 @@ export default function FieldCollector({ profile, layers }: Props) {
             )}
           </div>
 
-          {/* Bottom toolbar */}
-          <div className="bg-s1 border-t border-b1 px-4 py-3 safe-area-bottom">
-            <div className="flex items-center gap-3 max-w-sm mx-auto">
-              {/* Layer name */}
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: activeLayer.color }} />
-                <span className="text-xs font-mono font-semibold text-txt truncate">{activeLayer.name}</span>
+          {/* Toolbar GPS — vetëm gjatë hartimit */}
+          {(step === 'map' || step === 'done') && (
+            <div className="bg-s1 border-t border-b1 px-4 py-3 safe-area-bottom shrink-0">
+              <div className="flex items-center gap-2 max-w-sm mx-auto">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ background: activeLayer.color }} />
+                  <span className="text-xs font-mono font-semibold text-txt truncate">{activeLayer.name}</span>
+                </div>
+                <button
+                  onClick={() => { setStep('select'); setActiveLayer(null); setGpsCoords(null); setMyLocation(null) }}
+                  className="flex items-center gap-1 px-3 py-2 rounded-xl bg-s3 border border-b2 text-txt2 text-xs font-mono active:scale-95 transition-transform"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  Ndalo
+                </button>
+                <button
+                  onClick={() => setGpsRequest(n => n + 1)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-acc2/20 border border-acc2/40 text-acc2 text-xs font-mono active:scale-95 transition-transform"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
+                  GPS
+                </button>
+                <button
+                  onClick={() => { setLocating(true); setLocateTrigger(n => n + 1) }}
+                  disabled={locating}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono active:scale-95 transition-transform disabled:opacity-60 ${
+                    myLocation
+                      ? 'bg-blue-600/20 border border-blue-500/40 text-blue-600'
+                      : 'bg-s3 border border-b2 text-txt2'
+                  }`}
+                >
+                  {locating
+                    ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10" strokeOpacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
+                    : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8" strokeOpacity=".5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round"/></svg>
+                  }
+                  {locating ? '...' : 'Vendodhja'}
+                </button>
               </div>
-
-              {/* GPS button */}
-              <button
-                onClick={() => setGpsRequest(n => n + 1)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-acc2/20 border border-acc2/40 text-acc2 text-sm font-mono active:scale-95 transition-transform"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>
-                </svg>
-                GPS
-              </button>
-
-              {/* Change layer */}
-              <button
-                onClick={() => { setStep('select'); setActiveLayer(null); setGpsCoords(null) }}
-                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-s3 border border-b2 text-txt2 text-xs font-mono active:scale-95 transition-transform"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-                Ndalo
-              </button>
+              <p className="text-center text-xs text-txt3 font-mono mt-2">Klikoni në hartë ose përdorni GPS</p>
             </div>
+          )}
 
-            <p className="text-center text-xs text-txt3 font-mono mt-2">
-              Klikoni në hartë ose përdorni GPS
-            </p>
-          </div>
-        </div>
-      )}
+          {/* Forma — poshtë hartës */}
+          {step === 'form' && (
+            <div className="flex-1 flex flex-col overflow-hidden bg-bg">
 
-      {/* Step: FORM */}
-      {step === 'form' && activeLayer && (
-        <div className="flex-1 overflow-auto bg-bg">
-          <div className="max-w-sm mx-auto p-4 pt-2">
-            {/* Location summary */}
+          {/* Header strip */}
+          <div className="px-4 py-3 bg-s1 border-b border-b1 flex items-center gap-3 shrink-0">
+            <span className="w-3 h-3 rounded-full shrink-0" style={{ background: activeLayer.color }} />
+            <span className="font-semibold text-txt text-sm flex-1 truncate">{activeLayer.name}</span>
             {pendingCoords && (
-              <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-acc2/10 border border-acc2/30 rounded-xl">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2d8bff" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>
-                </svg>
-                <span className="text-xs font-mono text-acc2">
-                  {pendingCoords[0].toFixed(5)}, {pendingCoords[1].toFixed(5)}
-                </span>
-              </div>
+              <span className="text-[11px] font-mono text-txt3 shrink-0">
+                {pendingCoords[0].toFixed(4)}, {pendingCoords[1].toFixed(4)}
+              </span>
             )}
+          </div>
 
-            <h2 className="text-base font-semibold text-txt mb-1">Detajet e Objektit</h2>
-            <p className="text-xs text-txt3 font-mono mb-5">{activeLayer.name}</p>
-
-            <div className="space-y-4">
+          {/* Scrollable fields */}
+          <div className="flex-1 overflow-auto">
+            <div className="max-w-sm mx-auto px-4 py-4 space-y-3">
               {fields.length === 0 && (
-                <p className="text-xs text-txt3 font-mono text-center py-4 bg-s1 rounded-xl border border-b1">
-                  Kjo shtresë nuk ka fusha.
+                <p className="text-xs text-txt3 font-mono text-center py-6">
+                  Kjo shtresë nuk ka fusha të konfiguruara.
                 </p>
               )}
 
               {fields.sort((a, b) => a.sort_order - b.sort_order).map(f => (
                 <div key={f.id}>
-                  <label className="block text-sm font-medium text-txt mb-1.5">
+                  <label className="block text-xs font-semibold text-txt2 uppercase tracking-wide mb-1.5">
                     {f.field_label}
                     {f.required && <span className="text-err ml-1">*</span>}
                   </label>
@@ -250,8 +260,8 @@ export default function FieldCollector({ profile, layers }: Props) {
                       value={formValues[f.field_name] ?? ''}
                       onChange={e => setFormValues(p => ({ ...p, [f.field_name]: e.target.value }))}
                       required={f.required}
-                      rows={4}
-                      className="w-full bg-s1 border border-b1 rounded-xl px-4 py-3 text-sm text-txt outline-none focus:border-acc transition-colors resize-none"
+                      rows={3}
+                      className="w-full bg-s1 border border-b1 rounded-xl px-3 py-2.5 text-sm text-txt outline-none focus:border-acc focus:ring-2 focus:ring-acc/20 transition-all resize-none"
                       placeholder={f.field_label}
                     />
                   ) : f.field_type === 'select' ? (
@@ -259,27 +269,35 @@ export default function FieldCollector({ profile, layers }: Props) {
                       value={formValues[f.field_name] ?? ''}
                       onChange={e => setFormValues(p => ({ ...p, [f.field_name]: e.target.value }))}
                       required={f.required}
-                      className="w-full bg-s1 border border-b1 rounded-xl px-4 py-3 text-sm text-txt outline-none focus:border-acc transition-colors"
+                      className="w-full bg-s1 border border-b1 rounded-xl px-3 py-2.5 text-sm text-txt outline-none focus:border-acc focus:ring-2 focus:ring-acc/20 transition-all"
                     >
                       <option value="">— Zgjidh —</option>
                       {(f.field_options ?? []).map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : f.field_type === 'boolean' ? (
-                    <div className="flex gap-3">
-                      {['true','false'].map(val => (
-                        <button
-                          key={val}
-                          type="button"
-                          onClick={() => setFormValues(p => ({ ...p, [f.field_name]: val }))}
-                          className={`flex-1 py-3 rounded-xl border text-sm font-mono transition-all ${
-                            formValues[f.field_name] === val
-                              ? 'bg-acc text-white border-acc font-semibold'
-                              : 'bg-s1 border-b1 text-txt2 hover:border-b2'
-                          }`}
-                        >
-                          {val === 'true' ? 'Po ✓' : 'Jo ✕'}
-                        </button>
-                      ))}
+                    <div className="flex gap-2">
+                      {['true', 'false'].map(val => {
+                        const active = formValues[f.field_name] === val
+                        return (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setFormValues(p => ({ ...p, [f.field_name]: val }))}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-sm font-medium transition-all active:scale-95 ${
+                              active
+                                ? val === 'true'
+                                  ? 'bg-green-500 text-white border-green-500'
+                                  : 'bg-red-500 text-white border-red-500'
+                                : 'bg-s1 border-b1 text-txt3 hover:border-b2'
+                            }`}
+                          >
+                            {val === 'true'
+                              ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> Po</>
+                              : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Jo</>
+                            }
+                          </button>
+                        )
+                      })}
                     </div>
                   ) : (
                     <input
@@ -288,43 +306,51 @@ export default function FieldCollector({ profile, layers }: Props) {
                       onChange={e => setFormValues(p => ({ ...p, [f.field_name]: e.target.value }))}
                       required={f.required}
                       placeholder={f.field_label}
-                      className="w-full bg-s1 border border-b1 rounded-xl px-4 py-3 text-sm text-txt outline-none focus:border-acc transition-colors"
+                      className="w-full bg-s1 border border-b1 rounded-xl px-3 py-2.5 text-sm text-txt outline-none focus:border-acc focus:ring-2 focus:ring-acc/20 transition-all"
                     />
                   )}
                 </div>
               ))}
             </div>
+          </div>
 
-            {/* Action buttons */}
-            <div className="flex flex-col gap-3 mt-6">
+          {/* Footer: action buttons */}
+          <div className="shrink-0 px-4 py-3 bg-s1 border-t border-b1">
+            <div className="max-w-sm mx-auto flex gap-2">
+              <button
+                onClick={() => { setPendingCoords(null); setStep('map') }}
+                className="flex items-center gap-1.5 px-4 py-3 rounded-xl border border-b2 text-txt2 text-sm font-medium active:scale-95 transition-transform shrink-0"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+                Prapa
+              </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full py-4 rounded-2xl bg-acc text-white font-bold text-base active:scale-95 transition-transform disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-acc text-white font-semibold text-sm active:scale-95 transition-transform disabled:opacity-50"
               >
-                {saving ? 'Duke ruajtur...' : '✓ Ruaj Pikën'}
-              </button>
-              <button
-                onClick={() => { setPendingCoords(null); setStep('map') }}
-                className="w-full py-3 rounded-2xl border border-b2 text-txt2 text-sm font-mono active:scale-95 transition-transform"
-              >
-                ← Kthehu te harta
+                {saving ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10" strokeOpacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                )}
+                {saving ? 'Duke ruajtur...' : 'Ruaj Pikën'}
               </button>
             </div>
 
             {/* Recent items */}
             {recentItems.length > 0 && (
-              <div className="mt-6">
-                <p className="text-xs text-txt3 font-mono uppercase tracking-wider mb-3">
-                  Të regjistruarat sot ({recentItems.length})
+              <div className="max-w-sm mx-auto mt-3 pt-3 border-t border-b1">
+                <p className="text-[10px] text-txt3 font-mono uppercase tracking-widest mb-2">
+                  Të regjistruara ({recentItems.length})
                 </p>
-                <div className="space-y-2">
-                  {recentItems.slice(0, 5).map(item => {
+                <div className="space-y-1">
+                  {recentItems.slice(0, 4).map(item => {
                     const firstVal = Object.values(item.properties ?? {})[0]
                     return (
-                      <div key={item.id} className="flex items-center gap-3 px-3 py-2 bg-s1 border border-b1 rounded-xl">
-                        <span className="w-2 h-2 rounded-full bg-acc shrink-0" />
-                        <span className="text-xs text-txt flex-1 truncate font-mono">
+                      <div key={item.id} className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: activeLayer.color }} />
+                        <span className="text-xs text-txt flex-1 truncate">
                           {firstVal ? String(firstVal) : item.id.slice(0, 8)}
                         </span>
                         <span className="text-[10px] text-txt3 font-mono shrink-0">
@@ -336,7 +362,11 @@ export default function FieldCollector({ profile, layers }: Props) {
                 </div>
               </div>
             )}
+            </div>
+
           </div>
+          )}
+
         </div>
       )}
     </div>

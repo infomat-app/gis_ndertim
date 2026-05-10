@@ -12,6 +12,7 @@ import LayerEditorModal from './LayerEditorModal'
 import ImportModal, { type GeoJSONFeature } from './ImportModal'
 import AttributeTableModal from './AttributeTableModal'
 import { exportGeoJSON, exportCSV, exportXLS, exportKML, exportShapefile } from '@/lib/exports'
+import type { LayerPermLevel } from '@/lib/types'
 
 const MapView = dynamic(() => import('./MapView'), {
   ssr: false,
@@ -32,6 +33,7 @@ export default function MapPage({ profile }: Props) {
   const isAdmin   = profile.role === 'admin'
 
   const [layers,          setLayers]         = useState<Layer[]>([])
+  const [layerPerms,      setLayerPerms]     = useState<Record<string, LayerPermLevel>>({})
   const [features,        setFeatures]       = useState<Record<string, Feature[]>>({})
   const [activeLayer,     setActiveLayer]    = useState<Layer | null>(null)
   const [drawingCoords,   setDrawingCoords]  = useState<[number, number][]>([])
@@ -63,6 +65,33 @@ export default function MapPage({ profile }: Props) {
       .then(({ data }) => { if (data) setLayers(data) })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Load layer-level permissions for this user (admins skip — always full access)
+  useEffect(() => {
+    if (profile.role === 'admin') return
+    supabase
+      .from('layer_permissions')
+      .select('layer_id, permission')
+      .eq('user_id', profile.id)
+      .then(({ data }) => {
+        const m: Record<string, LayerPermLevel> = {}
+        for (const p of data ?? []) m[p.layer_id] = p.permission as LayerPermLevel
+        setLayerPerms(m)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id])
+
+  // Per-layer permission helpers
+  const canViewLayer = (layerId: string) => {
+    if (profile.role === 'admin') return true
+    return layerPerms[layerId] !== 'none'
+  }
+  const canEditLayer = (layerId: string) => {
+    if (profile.role === 'admin') return true
+    const p = layerPerms[layerId]
+    if (p !== undefined) return p === 'edit'
+    return profile.role !== 'viewer'
+  }
 
   // Load features for visible layers
   useEffect(() => {
@@ -235,14 +264,18 @@ export default function MapPage({ profile }: Props) {
         {/* Layer Sidebar */}
         <LayerPanel
           open={sidebarOpen}
-          layers={layers}
+          layers={layers.filter(l => canViewLayer(l.id))}
           features={features}
           activeLayer={activeLayer}
           canEdit={canEdit}
           isAdmin={isAdmin}
           onImport={() => setShowImport(true)}
           onToggle={() => setSidebarOpen(o => !o)}
-          onSelectLayer={l => { setActiveLayer(a => a?.id === l.id ? null : l); setDrawingCoords([]) }}
+          onSelectLayer={l => {
+            if (!canEditLayer(l.id)) return
+            setActiveLayer(a => a?.id === l.id ? null : l)
+            setDrawingCoords([])
+          }}
           onToggleVisibility={(id, v) => setLayers(prev => prev.map(l => l.id === id ? { ...l, visible: v } : l))}
           onAddLayer={() => { setEditingLayer(null); setShowLayerEditor(true) }}
           onEditLayer={l => { setEditingLayer(l); setShowLayerEditor(true) }}
@@ -256,7 +289,7 @@ export default function MapPage({ profile }: Props) {
         {/* Map */}
         <div className="flex-1 relative overflow-hidden">
           <MapView
-            layers={layers}
+            layers={layers.filter(l => canViewLayer(l.id))}
             features={features}
             activeLayer={activeLayer}
             drawingCoords={drawingCoords}
@@ -265,7 +298,7 @@ export default function MapPage({ profile }: Props) {
             zoomToFeature={zoomFeature}
             selectedFeatureId={selectedFeature?.id}
             selectedFeature={selectedFeature}
-            onGeometryUpdate={canEdit ? handleGeometryUpdate : undefined}
+            onGeometryUpdate={selectedFeature && canEditLayer(selectedFeature.layer_id) ? handleGeometryUpdate : undefined}
             onZoomDone={() => { setZoomRequest(null); setZoomFeature(null) }}
             onMapClick={handleMapClick}
             onMapDblClick={handleMapDblClick}
@@ -274,7 +307,7 @@ export default function MapPage({ profile }: Props) {
           />
 
           {/* Draw toolbar at bottom center */}
-          {activeLayer && canEdit && (
+          {activeLayer && canEditLayer(activeLayer.id) && (
             <DrawToolbar
               layer={activeLayer}
               drawingCoords={drawingCoords}
@@ -289,7 +322,7 @@ export default function MapPage({ profile }: Props) {
               key={selectedFeature.id}
               feature={selectedFeature}
               layer={layers.find(l => l.id === selectedFeature.layer_id)!}
-              canEdit={canEdit}
+              canEdit={canEditLayer(selectedFeature.layer_id)}
               onClose={() => setSelectedFeature(null)}
               onDelete={() => handleFeatureDelete(selectedFeature)}
               onSave={props => handleFeatureUpdate(selectedFeature, props)}

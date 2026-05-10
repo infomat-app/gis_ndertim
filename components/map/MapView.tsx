@@ -51,6 +51,42 @@ const gpsIcon = L.divIcon({
   iconAnchor: [9, 9],
 })
 
+const myLocPinIcon = L.divIcon({
+  className: '',
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,.4))">
+    <path d="M14 1C8.48 1 4 5.48 4 11c0 8.5 10 24 10 24S24 19.5 24 11C24 5.48 19.52 1 14 1z" fill="#1d4ed8"/>
+    <circle cx="14" cy="11" r="5" fill="white"/>
+    <circle cx="14" cy="11" r="2.5" fill="#1d4ed8"/>
+  </svg>`,
+  iconSize: [28, 36],
+  iconAnchor: [14, 36],
+})
+
+function MyLocationHandler({
+  trigger,
+  onLocated,
+}: {
+  trigger: number
+  onLocated: (pos: [number, number]) => void
+}) {
+  const map = useMap()
+  const prevRef = useRef(0)
+  useEffect(() => {
+    if (trigger === 0 || trigger === prevRef.current) return
+    prevRef.current = trigger
+    if (!navigator.geolocation) { alert('GPS nuk mbështetet nga shfletuesi'); return }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude: lat, longitude: lng } = pos.coords
+        map.flyTo([lat, lng], 17, { duration: 1.5 })
+        onLocated([lat, lng])
+      },
+      () => alert('Nuk mund të merret vendndodhja. Kontrollo lejet e shfletuesit.')
+    )
+  }, [trigger, map, onLocated])
+  return null
+}
+
 const vertexIcon = (first: boolean) => L.divIcon({
   className: '',
   html: `<div style="width:10px;height:10px;border-radius:50%;background:${first ? '#fff' : '#ffaa2e'};border:2px solid rgba(0,0,0,.5)"></div>`,
@@ -262,7 +298,20 @@ export default function MapView({
   onFeatureClick, onGeometryUpdate,
 }: Props) {
 
-  const [baseLayerId, setBaseLayerId] = useState('osm')
+  const [baseLayerId,   setBaseLayerId]   = useState('osm')
+  const [myLocation,    setMyLocation]    = useState<[number, number] | null>(null)
+  const [locateTrigger, setLocateTrigger] = useState(0)
+  const [locating,      setLocating]      = useState(false)
+
+  const handleLocate = () => {
+    setLocating(true)
+    setLocateTrigger(n => n + 1)
+  }
+
+  const handleLocated = useCallback((pos: [number, number]) => {
+    setMyLocation(pos)
+    setLocating(false)
+  }, [])
 
   const getFirstProp = useCallback((f: Feature): string => {
     const vals = Object.values(f.properties ?? {})
@@ -270,6 +319,7 @@ export default function MapView({
   }, [])
 
   return (
+    <div className="relative h-full w-full">
     <MapContainer
       center={[41.33, 19.83]}
       zoom={12}
@@ -374,6 +424,9 @@ export default function MapView({
         <VertexEditor feature={selectedFeature} onUpdate={onGeometryUpdate} />
       )}
 
+      {/* "My Location" pin marker */}
+      {myLocation && <Marker position={myLocation} icon={myLocPinIcon} />}
+
       <DrawHandler
         activeLayer={activeLayer}
         onMapClick={onMapClick}
@@ -382,6 +435,46 @@ export default function MapView({
       <GPSHandler gpsRequest={gpsRequest} onCapture={onGPSCapture} />
       <ZoomToLayer layerId={zoomToLayerId} features={features} onDone={onZoomDone} />
       <ZoomToFeature feature={zoomToFeature} onDone={onZoomDone} />
+      <MyLocationHandler trigger={locateTrigger} onLocated={handleLocated} />
     </MapContainer>
+
+    {/* My Location floating button — below zoom control (top-left) */}
+    <button
+      onClick={handleLocate}
+      disabled={locating}
+      title="Vendndodhja ime"
+      style={{ position: 'absolute', bottom: 80, right: 8, zIndex: 1000 }}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shadow-lg transition-all text-xs font-semibold
+        ${locating
+          ? 'bg-blue-400 text-white cursor-wait opacity-80'
+          : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'
+        }`}
+    >
+      {locating ? (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          className="animate-spin shrink-0">
+          <circle cx="12" cy="12" r="10" strokeOpacity=".3"/>
+          <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/>
+        </svg>
+      ) : (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+          <circle cx="12" cy="12" r="3" fill="currentColor"/>
+          <circle cx="12" cy="12" r="8" strokeOpacity=".6"/>
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round"/>
+        </svg>
+      )}
+      <span>{locating ? 'Duke kërkuar...' : 'Vendodhja'}</span>
+    </button>
+
+    {/* Coordinates label when located */}
+    {myLocation && (
+      <div
+        style={{ position: 'absolute', bottom: 80, right: 150, zIndex: 1000 }}
+        className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg px-2.5 py-1 text-[11px] font-mono text-gray-600 shadow-sm pointer-events-none"
+      >
+        {myLocation[0].toFixed(5)}, {myLocation[1].toFixed(5)}
+      </div>
+    )}
+    </div>
   )
 }

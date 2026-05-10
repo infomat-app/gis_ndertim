@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { Profile, Layer } from '@/lib/types'
 import Navbar from '@/components/ui/Navbar'
+import LayerPermissionsModal from './LayerPermissionsModal'
 
 const ROLES = ['admin','editor','field','viewer'] as const
 const ROLE_COLORS: Record<string, string> = {
@@ -41,6 +42,9 @@ export default function AdminPanel({ profile, initialUsers, initialLayers }: Pro
   const [editingId,  setEditingId]  = useState<string | null>(null)
   const [editName,   setEditName]   = useState('')
   const [editSaving, setEditSaving] = useState(false)
+
+  // ---- Layer permissions modal ----
+  const [permUser, setPermUser] = useState<Profile | null>(null)
 
   // ---- Change role ----
   const changeRole = async (userId: string, role: string) => {
@@ -309,6 +313,16 @@ export default function AdminPanel({ profile, initialUsers, initialLayers }: Pro
                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                             </svg>
                           </button>
+                          {/* Shield — layer permissions */}
+                          <button
+                            onClick={() => setPermUser(u)}
+                            className="p-1.5 rounded text-txt3 hover:text-acc2 hover:bg-acc2/10 transition-colors"
+                            title="Lejet e shtresave"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                          </button>
                           {/* Trash — delete (not for self) */}
                           {!isMe && (
                             <button
@@ -326,7 +340,7 @@ export default function AdminPanel({ profile, initialUsers, initialLayers }: Pro
                       )}
 
                       {/* Date */}
-                      <span className="text-[10px] text-txt3 font-mono shrink-0 hidden md:block w-16 text-right">
+                      <span suppressHydrationWarning className="text-[10px] text-txt3 font-mono shrink-0 hidden md:block w-16 text-right">
                         {new Date(u.created_at).toLocaleDateString('sq-AL')}
                       </span>
                     </div>
@@ -355,7 +369,7 @@ export default function AdminPanel({ profile, initialUsers, initialLayers }: Pro
                     }`}>
                       {l.visible ? 'Dukshme' : 'E fshehur'}
                     </span>
-                    <span className="text-xs text-txt3 font-mono hidden md:block">
+                    <span suppressHydrationWarning className="text-xs text-txt3 font-mono hidden md:block">
                       {new Date(l.created_at).toLocaleDateString('sq-AL')}
                     </span>
                   </div>
@@ -382,6 +396,15 @@ export default function AdminPanel({ profile, initialUsers, initialLayers }: Pro
           )}
         </div>
       </div>
+
+      {/* Layer permissions modal */}
+      {permUser && (
+        <LayerPermissionsModal
+          user={permUser}
+          layers={layers}
+          onClose={() => setPermUser(null)}
+        />
+      )}
     </div>
   )
 }

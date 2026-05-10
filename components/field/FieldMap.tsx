@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MapContainer, Marker, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { Layer, Feature } from '@/lib/types'
@@ -117,28 +117,19 @@ interface Props {
   pendingCoords: [number, number] | null
   gpsCoords: [number, number] | null
   gpsRequest: number
+  myLocation: [number, number] | null
+  locateTrigger: number
   onMapClick: (lat: number, lng: number) => void
   onGPSCapture: (lat: number, lng: number) => void
+  onLocated: (pos: [number, number]) => void
 }
 
 export default function FieldMap({
   layer, features, pendingCoords, gpsCoords,
-  gpsRequest, onMapClick, onGPSCapture,
+  gpsRequest, myLocation, locateTrigger,
+  onMapClick, onGPSCapture, onLocated,
 }: Props) {
-  const [baseLayerId,    setBaseLayerId]    = useState('osm')
-  const [myLocation,     setMyLocation]     = useState<[number, number] | null>(null)
-  const [locateTrigger,  setLocateTrigger]  = useState(0)
-  const [locating,       setLocating]       = useState(false)
-
-  const handleLocate = () => {
-    setLocating(true)
-    setLocateTrigger(n => n + 1)
-  }
-
-  const handleLocated = useCallback((pos: [number, number]) => {
-    setMyLocation(pos)
-    setLocating(false)
-  }, [])
+  const [baseLayerId, setBaseLayerId] = useState('google_satellite')
 
   return (
     <div className="relative h-full w-full">
@@ -173,47 +164,8 @@ export default function FieldMap({
 
         <ClickHandler onMapClick={onMapClick} />
         <GPSHandler gpsRequest={gpsRequest} onCapture={onGPSCapture} />
-        <MyLocationHandler trigger={locateTrigger} onLocated={handleLocated} />
+        <MyLocationHandler trigger={locateTrigger} onLocated={onLocated} />
       </MapContainer>
-
-      {/* "My Location" floating button — below zoom control (top-left) */}
-      <button
-        onClick={handleLocate}
-        disabled={locating}
-        title="Vendndodhja ime"
-        style={{ position: 'absolute', left: 10, top: 82, zIndex: 1000 }}
-        className={`w-[34px] h-[34px] bg-white rounded-md flex items-center justify-center shadow-md transition-all
-          ${locating
-            ? 'opacity-60 cursor-wait border-2 border-acc/40'
-            : 'border-2 border-gray-300 hover:border-acc hover:text-acc active:scale-95'
-          } text-gray-600`}
-      >
-        {locating ? (
-          // Spinner
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-            className="animate-spin">
-            <circle cx="12" cy="12" r="10" strokeOpacity=".25"/>
-            <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/>
-          </svg>
-        ) : (
-          // Crosshair / locate icon
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3" fill="currentColor" fillOpacity=".3"/>
-            <circle cx="12" cy="12" r="8" strokeOpacity=".4"/>
-            <path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round"/>
-          </svg>
-        )}
-      </button>
-
-      {/* Accuracy label when location is known */}
-      {myLocation && (
-        <div
-          style={{ position: 'absolute', left: 52, top: 88, zIndex: 1000 }}
-          className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg px-2.5 py-1 text-[11px] font-mono text-gray-600 shadow-sm pointer-events-none"
-        >
-          {myLocation[0].toFixed(5)}, {myLocation[1].toFixed(5)}
-        </div>
-      )}
     </div>
   )
 }
