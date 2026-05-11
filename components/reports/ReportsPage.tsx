@@ -311,7 +311,8 @@ export default function ReportsPage({ profile }: { profile: Profile }) {
 
           {layerId && !loading && filtered.length > 0 && (
             <div className="rounded-xl border border-b1 overflow-hidden shadow-sm">
-              <table className="w-full text-xs border-collapse">
+              <div className="overflow-x-auto">
+              <table className="w-max min-w-full text-xs border-collapse">
                 <thead>
                   <tr className="bg-acc text-white">
                     <th className="px-3 py-2.5 text-left font-semibold w-10 shrink-0">Nr</th>
@@ -344,6 +345,7 @@ export default function ReportsPage({ profile }: { profile: Profile }) {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>
