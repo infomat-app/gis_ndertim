@@ -1,9 +1,18 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { Profile, Layer } from '@/lib/types'
 import Navbar from '@/components/ui/Navbar'
 import LayerPermissionsModal from './LayerPermissionsModal'
+
+interface LogEntry {
+  type: 'feature' | 'layer'
+  id: string
+  layerName: string
+  action: 'created' | 'updated'
+  user: string
+  date: string
+}
 
 const ROLES = ['admin','editor','field','viewer'] as const
 const ROLE_COLORS: Record<string, string> = {
@@ -24,10 +33,19 @@ interface Props {
 
 export default function AdminPanel({ profile, initialUsers, initialLayers }: Props) {
   const supabase = createClient()
-  const [tab, setTab]     = useState<'users'|'layers'|'stats'>('users')
+  const [tab, setTab]     = useState<'users'|'layers'|'stats'|'backup'|'logs'>('users')
   const [users, setUsers] = useState<Profile[]>(initialUsers)
   const [layers]          = useState<Layer[]>(initialLayers)
   const [saving, setSaving] = useState<string | null>(null)
+
+  // ---- Backup/Restore state ----
+  const [backupLoading,  setBackupLoading]  = useState(false)
+  const [restoreLoading, setRestoreLoading] = useState(false)
+  const [restoreMsg,     setRestoreMsg]     = useState<{ok: boolean; text: string} | null>(null)
+
+  // ---- Logs state ----
+  const [logs,        setLogs]        = useState<LogEntry[] | null>(null)
+  const [logsLoading, setLogsLoading] = useState(false)
 
   // ---- Add user form state ----
   const [showAdd,     setShowAdd]     = useState(false)
@@ -109,10 +127,114 @@ export default function AdminPanel({ profile, initialUsers, initialLayers }: Pro
     }
   }
 
+  // ---- Backup ----
+  const handleBackup = async () => {
+    setBackupLoading(true)
+    const { data: layersData } = await supabase.from('layers').select('*, fields:layer_fields(*)')
+    const featuresMap: Record<string, unknown[]> = {}
+    for (const layer of layersData ?? []) {
+      let page = 0
+      const all: unknown[] = []
+      while (true) {
+        const { data } = await supabase.from('features').select('id,layer_id,geometry,properties,created_by,created_at,updated_at')
+          .eq('layer_id', layer.id).range(page * 1000, page * 1000 + 999)
+        if (!data || data.length === 0) break
+        all.push(...data)
+        if (data.length < 1000) break
+        page++
+      }
+      featuresMap[layer.id] = all
+    }
+    const backup = { version: '1.0', date: new Date().toISOString(), layers: layersData ?? [], features: featuresMap }
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `gis_backup_${new Date().toISOString().slice(0,10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    setBackupLoading(false)
+  }
+
+  // ---- Restore ----
+  const handleRestore = async (file: File) => {
+    setRestoreMsg(null)
+    let backup: { version: string; date?: string; layers: (Layer & { fields?: unknown[] })[]; features: Record<string, { id: string; layer_id: string; geometry: unknown; properties: unknown; created_by: string | null; created_at: string; updated_at: string }[]> }
+    try {
+      backup = JSON.parse(await file.text())
+      if (!backup.layers || !backup.features) throw new Error()
+    } catch {
+      setRestoreMsg({ ok: false, text: 'Skedari nuk është i vlefshëm.' })
+      return
+    }
+    if (!confirm(`Rimarro ${backup.layers.length} shtresa nga backup i datës ${backup.date?.slice(0,10)}?\n\nTë dhënat ekzistuese me të njëjtin ID do të mbishkruhen.`)) return
+    setRestoreLoading(true)
+    try {
+      for (const layer of backup.layers) {
+        const { fields, ...layerData } = layer
+        await supabase.from('layers').upsert(layerData as Omit<Layer, 'fields'>)
+        await supabase.from('layer_fields').delete().eq('layer_id', layer.id)
+        if ((fields ?? []).length) await supabase.from('layer_fields').insert(fields as object[])
+      }
+      let totalFeatures = 0
+      for (const feats of Object.values(backup.features)) {
+        for (let i = 0; i < feats.length; i += 500) {
+          await supabase.from('features').upsert(feats.slice(i, i + 500))
+        }
+        totalFeatures += feats.length
+      }
+      setRestoreMsg({ ok: true, text: `U rikthyen ${backup.layers.length} shtresa dhe ${totalFeatures} objekte.` })
+    } catch {
+      setRestoreMsg({ ok: false, text: 'Gabim gjatë rikthimit. Kontrollo konsolën.' })
+    }
+    setRestoreLoading(false)
+  }
+
+  // ---- Logs ----
+  useEffect(() => {
+    if (tab !== 'logs' || logs !== null) return
+    setLogsLoading(true)
+    Promise.all([
+      supabase.from('features')
+        .select('id, layer_id, created_at, updated_at, created_by, profile:profiles(full_name, email)')
+        .order('updated_at', { ascending: false })
+        .limit(200),
+      supabase.from('layers')
+        .select('id, name, created_at, updated_at, created_by')
+        .order('updated_at', { ascending: false })
+        .limit(30),
+    ]).then(([{ data: feats }, { data: lyrs }]) => {
+      const entries: LogEntry[] = [
+        ...(feats ?? []).map(f => ({
+          type: 'feature' as const,
+          id: f.id,
+          layerName: layers.find(l => l.id === f.layer_id)?.name ?? f.layer_id.slice(0,8),
+          action: (f.created_at === f.updated_at ? 'created' : 'updated') as 'created' | 'updated',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          user: (f.profile as any)?.full_name ?? (f.profile as any)?.email ?? f.created_by?.slice(0,8) ?? '—',
+          date: f.updated_at,
+        })),
+        ...(lyrs ?? []).map(l => ({
+          type: 'layer' as const,
+          id: l.id,
+          layerName: l.name,
+          action: (l.created_at === l.updated_at ? 'created' : 'updated') as 'created' | 'updated',
+          user: '—',
+          date: l.updated_at,
+        })),
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      setLogs(entries)
+      setLogsLoading(false)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab])
+
   const TABS = [
     { key: 'users',  label: 'Përdoruesit', icon: '👥' },
     { key: 'layers', label: 'Shtresat',     icon: '🗂️' },
     { key: 'stats',  label: 'Statistika',   icon: '📊' },
+    { key: 'backup', label: 'Backup',       icon: '💾' },
+    { key: 'logs',   label: 'Logs',         icon: '📋' },
   ]
 
   return (
@@ -380,6 +502,140 @@ export default function AdminPanel({ profile, initialUsers, initialLayers }: Pro
                   </p>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* ---- BACKUP TAB ---- */}
+          {tab === 'backup' && (
+            <div className="space-y-4">
+              {/* Export */}
+              <div className="bg-s1 border border-b1 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-acc/10 border border-acc/20 flex items-center justify-center shrink-0 text-lg">💾</div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-txt mb-1">Shkarko Backup</h3>
+                    <p className="text-xs text-txt3 font-mono mb-4">Eksporton të gjitha shtresat, fushat dhe objektet si skedar JSON.</p>
+                    <button
+                      onClick={handleBackup}
+                      disabled={backupLoading}
+                      className="flex items-center gap-2 px-4 py-2 bg-acc text-white rounded-lg text-xs font-semibold hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors"
+                    >
+                      {backupLoading
+                        ? <><span className="animate-spin inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full"/> Duke eksportuar...</>
+                        : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Shkarko JSON</>
+                      }
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Restore */}
+              <div className="bg-s1 border border-b1 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-warn/10 border border-warn/20 flex items-center justify-center shrink-0 text-lg">🔄</div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-txt mb-1">Rimarro nga Backup</h3>
+                    <p className="text-xs text-txt3 font-mono mb-1">Ngarko një skedar JSON backup. Të dhënat ekzistuese me të njëjtin ID do të <span className="text-warn font-semibold">mbishkruhen</span>.</p>
+                    <p className="text-[10px] text-txt3 font-mono mb-4 bg-warn/5 border border-warn/20 rounded px-2 py-1">⚠️ Kjo veprim mbishkruan të dhënat. Bëj një backup të ri para rikthimit.</p>
+                    <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                      restoreLoading ? 'opacity-50 pointer-events-none' : 'border-warn text-warn hover:bg-warn/10'
+                    }`}>
+                      {restoreLoading
+                        ? <><span className="animate-spin inline-block w-3 h-3 border-2 border-warn/30 border-t-warn rounded-full"/>Duke rikthyer...</>
+                        : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Zgjidh skedarin JSON</>
+                      }
+                      <input type="file" accept=".json" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { handleRestore(f); e.target.value = '' } }} />
+                    </label>
+                    {restoreMsg && (
+                      <p className={`mt-3 text-xs font-mono px-3 py-2 rounded-lg border ${
+                        restoreMsg.ok ? 'text-acc2 bg-acc2/10 border-acc2/30' : 'text-err bg-err/10 border-err/30'
+                      }`}>
+                        {restoreMsg.ok ? '✓ ' : '✗ '}{restoreMsg.text}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="bg-s1 border border-b1 rounded-2xl p-4">
+                <p className="text-[10px] text-txt3 font-mono uppercase tracking-wider mb-2">Formati i Backup</p>
+                <pre className="text-[10px] text-txt2 font-mono bg-s2 border border-b1 rounded-lg p-3 overflow-auto">{`{
+  "version": "1.0",
+  "date": "2026-01-01T00:00:00.000Z",
+  "layers": [ { ...layer, "fields": [...] } ],
+  "features": { "<layer_id>": [ ...features ] }
+}`}</pre>
+              </div>
+            </div>
+          )}
+
+          {/* ---- LOGS TAB ---- */}
+          {tab === 'logs' && (
+            <div className="bg-s1 border border-b1 rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-b1 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-txt">Aktiviteti i fundit</h2>
+                <button
+                  onClick={() => { setLogs(null); setLogsLoading(false) }}
+                  className="flex items-center gap-1.5 text-xs font-mono text-txt2 hover:text-acc transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+                  Rifresko
+                </button>
+              </div>
+              {logsLoading && (
+                <div className="flex items-center justify-center py-12 gap-2 text-xs text-txt3 font-mono">
+                  <span className="animate-spin inline-block w-4 h-4 border-2 border-acc/30 border-t-acc rounded-full"/>
+                  Duke ngarkuar aktivitetin...
+                </div>
+              )}
+              {!logsLoading && logs !== null && logs.length === 0 && (
+                <p className="text-center text-xs text-txt3 font-mono py-10">Nuk ka aktivitet të regjistruar.</p>
+              )}
+              {!logsLoading && logs !== null && logs.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs font-mono">
+                    <thead>
+                      <tr className="border-b border-b1 text-left">
+                        <th className="px-4 py-2 text-txt3 font-medium">Tipi</th>
+                        <th className="px-4 py-2 text-txt3 font-medium">Shtresa</th>
+                        <th className="px-4 py-2 text-txt3 font-medium">Veprimi</th>
+                        <th className="px-4 py-2 text-txt3 font-medium">Përdoruesi</th>
+                        <th className="px-4 py-2 text-txt3 font-medium">Data</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-b1">
+                      {logs.map((entry, i) => (
+                        <tr key={`${entry.id}-${i}`} className="hover:bg-s2 transition-colors">
+                          <td className="px-4 py-2">
+                            <span className={`px-1.5 py-0.5 rounded border text-[10px] ${
+                              entry.type === 'feature'
+                                ? 'text-acc bg-acc/10 border-acc/20'
+                                : 'text-acc3 bg-acc3/10 border-acc3/20'
+                            }`}>
+                              {entry.type === 'feature' ? 'Objekt' : 'Shtresë'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-txt max-w-[180px] truncate">{entry.layerName}</td>
+                          <td className="px-4 py-2">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                              entry.action === 'created'
+                                ? 'text-acc2 bg-acc2/10 border-acc2/20'
+                                : 'text-warn bg-warn/10 border-warn/20'
+                            }`}>
+                              {entry.action === 'created' ? '+ Shtuar' : '✎ Ndryshuar'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-txt2 max-w-[140px] truncate">{entry.user}</td>
+                          <td suppressHydrationWarning className="px-4 py-2 text-txt3 whitespace-nowrap">
+                            {new Date(entry.date).toLocaleString('sq-AL', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
