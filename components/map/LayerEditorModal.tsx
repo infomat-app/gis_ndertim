@@ -73,6 +73,7 @@ const blank: Omit<Layer, 'id'|'created_at'|'updated_at'> = {
   sort_order: 0,
   point_style: 'circle',
   point_size: 16,
+  clustering: false,
   created_by: null,
 }
 
@@ -249,6 +250,23 @@ export default function LayerEditorModal({ layer, onSave, onClose }: Props) {
                         </span>
                         <span>40px</span>
                       </div>
+                    </div>
+                    <div className="flex items-center justify-between py-2 px-3 bg-s2 border border-b1 rounded-lg">
+                      <div>
+                        <p className="text-xs text-txt font-mono">Grupimi i pikave (Clustering)</p>
+                        <p className="text-[10px] text-txt3 font-mono">Grumbullo pikat afër njëra-tjetrës</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => set('clustering', !(data.clustering ?? false))}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                          data.clustering ? 'bg-acc' : 'bg-b2'
+                        }`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                          data.clustering ? 'translate-x-4' : 'translate-x-0.5'
+                        }`} />
+                      </button>
                     </div>
                   </>
                 )}

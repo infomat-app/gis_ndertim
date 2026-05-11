@@ -4,6 +4,7 @@ import {
   MapContainer, Marker, Polyline, Polygon, Circle,
   useMapEvents, useMap, Tooltip,
 } from 'react-leaflet'
+import MarkerClusterGroup from 'react-leaflet-cluster'
 import type { MapTool } from './MapToolbar'
 import L from 'leaflet'
 import type { Layer, Feature, PointStyle, GeoJSONGeometry } from '@/lib/types'
@@ -433,8 +434,44 @@ export default function MapView({
       <BaseLayerControl activeId={baseLayerId} onChange={setBaseLayerId} />
 
       {/* Render features per visible layer */}
-      {layers.filter(l => l.visible).map(layer =>
-        (features[layer.id] ?? []).map(feat => {
+      {layers.filter(l => l.visible).map(layer => {
+        if (layer.geom_type === 'Point' && layer.clustering) {
+          const markers = (features[layer.id] ?? []).map(feat => {
+            const isSelected = feat.id === selectedFeatureId || (selectedFeatureIds?.has(feat.id) ?? false)
+            const [lng, lat] = feat.geometry.coordinates as [number, number]
+            return (
+              <Marker
+                key={feat.id}
+                position={[lat, lng]}
+                icon={pointIcon(layer.color, layer.point_style ?? 'circle', isSelected, layer.point_size ?? 16)}
+                zIndexOffset={isSelected ? 1000 : 0}
+                draggable={isSelected && !!onGeometryUpdate}
+                eventHandlers={{
+                  click: () => onFeatureClick(feat),
+                  dragend: (e) => {
+                    if (!onGeometryUpdate) return
+                    const pos = (e.target as L.Marker).getLatLng()
+                    onGeometryUpdate(feat.id, { type: 'Point', coordinates: [pos.lng, pos.lat] })
+                  },
+                }}
+              >
+                <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
+                  <span className="text-xs">{getFirstProp(feat)}</span>
+                </Tooltip>
+              </Marker>
+            )
+          })
+          return (
+            <MarkerClusterGroup
+              key={layer.id}
+              chunkedLoading
+            >
+              {markers}
+            </MarkerClusterGroup>
+          )
+        }
+
+        return (features[layer.id] ?? []).map(feat => {
           const isSelected = feat.id === selectedFeatureId || (selectedFeatureIds?.has(feat.id) ?? false)
           if (layer.geom_type === 'Point') {
             const [lng, lat] = feat.geometry.coordinates as [number, number]
@@ -494,7 +531,7 @@ export default function MapView({
           }
           return null
         })
-      )}
+      })}
 
       {/* Drawing preview */}
       {activeLayer && drawingCoords.length > 0 && (

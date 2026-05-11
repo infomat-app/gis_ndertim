@@ -34,6 +34,7 @@ export interface Layer {
   sort_order: number
   point_style?: PointStyle | null
   point_size?: number | null
+  clustering?: boolean | null
   created_by: string | null
   created_at: string
   updated_at: string
