@@ -72,6 +72,7 @@ const blank: Omit<Layer, 'id'|'created_at'|'updated_at'> = {
   visible: true,
   sort_order: 0,
   point_style: 'circle',
+  point_size: 16,
   created_by: null,
 }
 
@@ -197,29 +198,59 @@ export default function LayerEditorModal({ layer, onSave, onClose }: Props) {
 
                 {/* Point style picker — visible only for Point geometry */}
                 {data.geom_type === 'Point' && (
-                  <div>
-                    <label className="block text-xs text-txt2 font-mono mb-2">Forma e pikës</label>
-                    <div className="grid grid-cols-6 gap-1.5">
-                      {POINT_STYLES.map(ps => {
-                        const active = (data.point_style ?? 'circle') === ps.id
-                        return (
-                          <button
-                            key={ps.id}
-                            type="button"
-                            onClick={() => set('point_style', ps.id)}
-                            className={`flex flex-col items-center gap-1 py-2 rounded-lg border transition-all ${
-                              active ? 'border-acc bg-acc/10' : 'border-b1 hover:border-b2 bg-s2'
-                            }`}
-                          >
-                            <svg width="20" height="20" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>
-                              {ps.preview(data.color)}
-                            </svg>
-                            <span className="text-[9px] font-mono text-txt3 leading-none">{ps.label}</span>
-                          </button>
-                        )
-                      })}
+                  <>
+                    <div>
+                      <label className="block text-xs text-txt2 font-mono mb-2">Forma e pikës</label>
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {POINT_STYLES.map(ps => {
+                          const active = (data.point_style ?? 'circle') === ps.id
+                          return (
+                            <button
+                              key={ps.id}
+                              type="button"
+                              onClick={() => set('point_style', ps.id)}
+                              className={`flex flex-col items-center gap-1 py-2 rounded-lg border transition-all ${
+                                active ? 'border-acc bg-acc/10' : 'border-b1 hover:border-b2 bg-s2'
+                              }`}
+                            >
+                              <svg width="20" height="20" viewBox="0 0 16 16" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>
+                                {ps.preview(data.color)}
+                              </svg>
+                              <span className="text-[9px] font-mono text-txt3 leading-none">{ps.label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
+                    <div>
+                      <label className="block text-xs text-txt2 font-mono mb-1">
+                        Madhësia e pikës ({data.point_size ?? 16}px)
+                      </label>
+                      <input
+                        type="range"
+                        min={8}
+                        max={40}
+                        step={2}
+                        value={data.point_size ?? 16}
+                        onChange={e => set('point_size', Number(e.target.value))}
+                        className="w-full accent-acc"
+                      />
+                      <div className="flex justify-between text-[10px] text-txt3 font-mono mt-0.5">
+                        <span>8px</span>
+                        <span className="text-center">
+                          <svg
+                            width={data.point_size ?? 16}
+                            height={data.point_size ?? 16}
+                            viewBox="0 0 16 16"
+                            style={{ display: 'inline-block', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}
+                          >
+                            {POINT_STYLES.find(p => p.id === (data.point_style ?? 'circle'))?.preview(data.color)}
+                          </svg>
+                        </span>
+                        <span>40px</span>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </div>

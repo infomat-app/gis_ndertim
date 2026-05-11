@@ -33,6 +33,7 @@ export interface Layer {
   visible: boolean
   sort_order: number
   point_style?: PointStyle | null
+  point_size?: number | null
   created_by: string | null
   created_at: string
   updated_at: string

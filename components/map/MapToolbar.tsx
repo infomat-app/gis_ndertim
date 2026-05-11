@@ -1,6 +1,6 @@
 'use client'
 
-export type MapTool = 'xy' | 'measure-dist' | 'measure-area' | 'buffer' | 'info'
+export type MapTool = 'select' | 'xy' | 'measure-dist' | 'measure-area' | 'buffer' | 'info'
 
 interface Props {
   activeTool: MapTool | null
@@ -9,6 +9,16 @@ interface Props {
 
 export default function MapToolbar({ activeTool, onSelectTool }: Props) {
   const tools: { id: MapTool; title: string; svg: React.ReactNode }[] = [
+    {
+      id: 'select',
+      title: 'Selekto objekte',
+      svg: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 4l6 16 3-7 7-3z" fill="currentColor" fillOpacity="0.15"/>
+          <path d="M4 4l6 16 3-7 7-3L4 4z"/>
+        </svg>
+      ),
+    },
     {
       id: 'xy',
       title: 'Shko tek XY',

@@ -35,8 +35,8 @@ function svgShape(color: string, style: PointStyle, sw: number): string {
   }
 }
 
-function pointIcon(color: string, style: PointStyle = 'circle', selected = false) {
-  const size = selected ? 22 : 16
+function pointIcon(color: string, style: PointStyle = 'circle', selected = false, baseSize = 16) {
+  const size = selected ? Math.round(baseSize * 1.375) : baseSize
   const sw   = selected ? 2 : 1.5
   const glow = selected
     ? `filter:drop-shadow(0 0 5px ${color})drop-shadow(0 0 2px ${color})`
@@ -221,14 +221,16 @@ function ToolHandler({
 }) {
   const map = useMapEvents({
     click(e) {
-      if (!activeTool || activeTool === 'xy') return
+      if (!activeTool || activeTool === 'xy' || activeTool === 'select') return
       onToolClick(e.latlng.lat, e.latlng.lng)
     },
   })
 
   useEffect(() => {
     if (!activeTool) return
-    const cursor = activeTool === 'info' ? 'help' : activeTool === 'xy' ? 'default' : 'crosshair'
+    const cursor = activeTool === 'info' ? 'help'
+      : (activeTool === 'xy' || activeTool === 'select') ? 'default'
+      : 'crosshair'
     map.getContainer().style.cursor = cursor
   }, [activeTool, map])
 
@@ -349,6 +351,7 @@ interface Props {
   zoomToLayerId: string | null
   zoomToFeature: Feature | null
   selectedFeatureId?: string | null
+  selectedFeatureIds?: Set<string>
   selectedFeature?: Feature | null
   onZoomDone: () => void
   onMapClick: (lat: number, lng: number) => void
@@ -371,7 +374,7 @@ interface Props {
 export default function MapView({
   layers, features, activeLayer, drawingCoords,
   gpsRequest, zoomToLayerId, zoomToFeature,
-  selectedFeatureId, selectedFeature,
+  selectedFeatureId, selectedFeatureIds, selectedFeature,
   onZoomDone, onMapClick, onMapDblClick, onGPSCapture,
   onFeatureClick, onGeometryUpdate,
   activeTool = null,
@@ -422,14 +425,14 @@ export default function MapView({
       {/* Render features per visible layer */}
       {layers.filter(l => l.visible).map(layer =>
         (features[layer.id] ?? []).map(feat => {
-          const isSelected = feat.id === selectedFeatureId
+          const isSelected = feat.id === selectedFeatureId || (selectedFeatureIds?.has(feat.id) ?? false)
           if (layer.geom_type === 'Point') {
             const [lng, lat] = feat.geometry.coordinates as [number, number]
             return (
               <Marker
                 key={feat.id}
                 position={[lat, lng]}
-                icon={pointIcon(layer.color, layer.point_style ?? 'circle', isSelected)}
+                icon={pointIcon(layer.color, layer.point_style ?? 'circle', isSelected, layer.point_size ?? 16)}
                 zIndexOffset={isSelected ? 1000 : 0}
                 draggable={isSelected && !!onGeometryUpdate}
                 eventHandlers={{

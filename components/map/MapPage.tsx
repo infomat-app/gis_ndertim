@@ -12,7 +12,7 @@ import FeatureDetail from './FeatureDetail'
 import LayerEditorModal from './LayerEditorModal'
 import ImportModal, { type GeoJSONFeature } from './ImportModal'
 import AttributeTableModal from './AttributeTableModal'
-import { exportGeoJSON, exportCSV, exportXLS, exportKML, exportShapefile } from '@/lib/exports'
+import { exportGeoJSON, exportCSV, exportXLS, exportKML, exportShapefile, exportMultiCSV, exportMultiXLS } from '@/lib/exports'
 import type { LayerPermLevel } from '@/lib/types'
 
 const MapView = dynamic(() => import('./MapView'), {
@@ -51,7 +51,8 @@ export default function MapPage({ profile }: Props) {
   const [zoomFeature,     setZoomFeature]    = useState<Feature | null>(null)
 
   // ---- Tool state ----
-  const [activeTool,    setActiveTool]    = useState<MapTool | null>(null)
+  const [activeTool,      setActiveTool]      = useState<MapTool | null>(null)
+  const [mapSelectedIds,  setMapSelectedIds]  = useState<Set<string>>(new Set())
   const [measurePts,    setMeasurePts]    = useState<[number, number][]>([])
   const [bufferCenter,  setBufferCenter]  = useState<[number, number] | null>(null)
   const [bufferRadius,  setBufferRadius]  = useState(100)
@@ -356,6 +357,7 @@ export default function MapPage({ profile }: Props) {
     setBufferCenter(null)
     setInfoFeatures([])
     setXYMarker(null)
+    if (tool !== 'select') setMapSelectedIds(new Set())
     if (tool !== null) {
       setActiveLayer(null)
       setDrawingCoords([])
@@ -510,6 +512,54 @@ export default function MapPage({ profile }: Props) {
             </div>
           )}
 
+          {/* Select tool export panel */}
+          {activeTool === 'select' && (
+            <div className="absolute z-[1001] bottom-8 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm border border-b1 rounded-xl shadow-lg px-4 py-2 flex items-center gap-3 whitespace-nowrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-txt2 shrink-0">
+                <path d="M4 4l6 16 3-7 7-3z"/>
+              </svg>
+              <span className="text-xs text-txt2">
+                {mapSelectedIds.size > 0
+                  ? <><strong className="text-txt">{mapSelectedIds.size}</strong> objekte të zgjedhura</>
+                  : <span className="italic text-txt3">Klikoni mbi objekte në hartë</span>}
+              </span>
+              {mapSelectedIds.size > 0 && (
+                <>
+                  <button
+                    onClick={() => {
+                      const allFeats = Object.values(features).flat()
+                      const sel = allFeats.filter(f => mapSelectedIds.has(f.id))
+                      const lmap = new Map(layers.map(l => [l.id, l]))
+                      exportMultiCSV(lmap, sel)
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    CSV
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const allFeats = Object.values(features).flat()
+                      const sel = allFeats.filter(f => mapSelectedIds.has(f.id))
+                      const lmap = new Map(layers.map(l => [l.id, l]))
+                      await exportMultiXLS(lmap, sel)
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-green-300 text-green-700 hover:bg-green-50 transition-colors"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    XLS
+                  </button>
+                  <button
+                    onClick={() => setMapSelectedIds(new Set())}
+                    className="text-xs text-err hover:text-err/70 transition-colors ml-1"
+                  >
+                    Pastro
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Info panel */}
           {infoFeatures.length > 0 && (
             <div className="absolute z-[1001] right-12 top-1/2 -translate-y-1/2 w-64 bg-white/95 backdrop-blur-sm border border-b1 rounded-xl shadow-xl overflow-hidden">
@@ -572,13 +622,24 @@ export default function MapPage({ profile }: Props) {
             zoomToLayerId={zoomRequest}
             zoomToFeature={zoomFeature}
             selectedFeatureId={selectedFeature?.id}
+            selectedFeatureIds={mapSelectedIds.size > 0 ? mapSelectedIds : undefined}
             selectedFeature={selectedFeature}
             onGeometryUpdate={selectedFeature && canEditLayer(selectedFeature.layer_id) ? handleGeometryUpdate : undefined}
             onZoomDone={() => { setZoomRequest(null); setZoomFeature(null) }}
             onMapClick={handleMapClick}
             onMapDblClick={handleMapDblClick}
             onGPSCapture={handleGPSCapture}
-            onFeatureClick={setSelectedFeature}
+            onFeatureClick={f => {
+              if (activeTool === 'select') {
+                setMapSelectedIds(prev => {
+                  const next = new Set(prev)
+                  if (next.has(f.id)) next.delete(f.id); else next.add(f.id)
+                  return next
+                })
+              } else {
+                setSelectedFeature(f)
+              }
+            }}
             activeTool={activeTool}
             measurePts={measurePts}
             bufferCenter={bufferCenter}

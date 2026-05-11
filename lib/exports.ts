@@ -8,6 +8,57 @@ function download(content: string | Blob, filename: string, mime = 'text/plain')
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+export function exportMultiCSV(layerMap: Map<string, Layer>, features: Feature[]) {
+  if (!features.length) return
+  const allKeys: string[] = []
+  const seen = new Set<string>()
+  features.forEach(f => Object.keys(f.properties ?? {}).forEach(k => {
+    if (!seen.has(k)) { seen.add(k); allKeys.push(k) }
+  }))
+  const hasPoint = features.some(f => f.geometry.type === 'Point')
+  const headers = ['Shtresa', ...(hasPoint ? ['Lat', 'Lng'] : []), ...allKeys]
+  const rows = features.map(f => {
+    const layer = layerMap.get(f.layer_id)
+    const row: string[] = [layer?.name ?? f.layer_id]
+    if (hasPoint) {
+      if (f.geometry.type === 'Point') {
+        const [lng, lat] = f.geometry.coordinates as [number, number]
+        row.push(String(lat), String(lng))
+      } else {
+        row.push('', '')
+      }
+    }
+    for (const k of allKeys) row.push(formatCsvValue(f.properties?.[k]))
+    return row
+  })
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+  download(csv, `selektimi.csv`, 'text/csv;charset=utf-8')
+}
+
+export async function exportMultiXLS(layerMap: Map<string, Layer>, features: Feature[]) {
+  const { utils, write } = await import('xlsx')
+  const allKeys: string[] = []
+  const seen = new Set<string>()
+  features.forEach(f => Object.keys(f.properties ?? {}).forEach(k => {
+    if (!seen.has(k)) { seen.add(k); allKeys.push(k) }
+  }))
+  const rows = features.map(f => {
+    const layer = layerMap.get(f.layer_id)
+    const row: Record<string, unknown> = { Shtresa: layer?.name ?? f.layer_id }
+    if (f.geometry.type === 'Point') {
+      const [lng, lat] = f.geometry.coordinates as [number, number]
+      row['Lat'] = lat; row['Lng'] = lng
+    }
+    for (const k of allKeys) row[k] = f.properties?.[k] ?? ''
+    return row
+  })
+  const ws = utils.json_to_sheet(rows)
+  const wb = utils.book_new()
+  utils.book_append_sheet(wb, ws, 'Selektimi')
+  const buf = write(wb, { type: 'array', bookType: 'xlsx' })
+  download(new Blob([buf], { type: 'application/octet-stream' }), 'selektimi.xlsx')
+}
+
 export function exportGeoJSON(layer: Layer, features: Feature[]) {
   const fc = {
     type: 'FeatureCollection',

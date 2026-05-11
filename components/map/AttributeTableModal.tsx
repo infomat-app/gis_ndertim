@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState, useCallback } from 'react'
 import type { Feature, Layer, FieldType } from '@/lib/types'
-import { exportCSV } from '@/lib/exports'
+import { exportCSV, exportXLS } from '@/lib/exports'
 
 function formatCell(value: unknown, type?: FieldType): string {
   if (value == null || value === '') return '—'
@@ -62,11 +62,28 @@ export default function AttributeTableModal({
     )
   }, [features, search])
 
-  const handleRowClick = useCallback((f: Feature) => {
-    setSelected(new Set([f.id]))
-    setLastClick(f.id)
-    onSelectFeature(f)
-  }, [onSelectFeature])
+  const handleRowClick = useCallback((e: React.MouseEvent, f: Feature) => {
+    if (e.ctrlKey || e.metaKey) {
+      setSelected(prev => {
+        const next = new Set(prev)
+        if (next.has(f.id)) next.delete(f.id); else next.add(f.id)
+        return next
+      })
+      setLastClick(f.id)
+    } else if (e.shiftKey && lastClick) {
+      const ids = filtered.map(x => x.id)
+      const a = ids.indexOf(lastClick), b = ids.indexOf(f.id)
+      if (a !== -1) {
+        setSelected(new Set(ids.slice(Math.min(a, b), Math.max(a, b) + 1)))
+      } else {
+        setSelected(new Set([f.id])); setLastClick(f.id); onSelectFeature(f)
+      }
+    } else {
+      setSelected(new Set([f.id]))
+      setLastClick(f.id)
+      onSelectFeature(f)
+    }
+  }, [onSelectFeature, lastClick, filtered])
 
   const handleRowRightClick = useCallback((e: React.MouseEvent, f: Feature) => {
     e.preventDefault()
@@ -75,6 +92,11 @@ export default function AttributeTableModal({
     onSelectFeature(f)
     onZoomToFeature(f)
   }, [onSelectFeature, onZoomToFeature])
+
+  const handleSelectAll = () => {
+    if (selected.size === filtered.length) setSelected(new Set())
+    else setSelected(new Set(filtered.map(f => f.id)))
+  }
 
   const handleDeleteSelected = () => {
     if (!selected.size) return
@@ -103,6 +125,11 @@ export default function AttributeTableModal({
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: layer.color }} />
         <span className="text-xs font-semibold text-gray-700 font-mono">{layer.name}</span>
         <span className="text-[10px] text-gray-400 font-mono">{filtered.length} / {features.length} objekte</span>
+        {selected.size > 0 && (
+          <span className="text-[10px] font-semibold text-yellow-700 bg-yellow-100 px-1.5 py-0.5 rounded font-mono">
+            {selected.size} zgj.
+          </span>
+        )}
 
         <div className="flex-1" />
 
@@ -120,6 +147,12 @@ export default function AttributeTableModal({
         </div>
 
         {/* Action buttons */}
+        <button
+          onClick={handleSelectAll}
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+        >
+          {selected.size === filtered.length && filtered.length > 0 ? 'Hiq të gjitha' : 'Të gjitha'}
+        </button>
         <button
           onClick={handleZoomSelected}
           disabled={!selected.size}
@@ -142,13 +175,28 @@ export default function AttributeTableModal({
           Fshi {deletableSelected > 0 && `(${deletableSelected})`}
         </button>
         <button
-          onClick={() => exportCSV(layer, features)}
+          onClick={() => {
+            const toExport = selected.size > 0 ? features.filter(f => selected.has(f.id)) : features
+            exportCSV(layer, toExport)
+          }}
           className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          CSV
+          CSV{selected.size > 0 && ` (${selected.size})`}
+        </button>
+        <button
+          onClick={async () => {
+            const toExport = selected.size > 0 ? features.filter(f => selected.has(f.id)) : features
+            await exportXLS(layer, toExport)
+          }}
+          className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg border border-green-300 text-green-700 hover:bg-green-50 transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          XLS{selected.size > 0 && ` (${selected.size})`}
         </button>
         <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-700 transition-colors">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -192,7 +240,7 @@ export default function AttributeTableModal({
               return (
                 <tr
                   key={f.id}
-                  onClick={() => handleRowClick(f)}
+                  onClick={e => handleRowClick(e, f)}
                   onContextMenu={e => handleRowRightClick(e, f)}
                   className={`border-b border-gray-100 cursor-pointer select-none transition-colors ${
                     isSelected
@@ -230,7 +278,7 @@ export default function AttributeTableModal({
 
       {/* Footer hint */}
       <div className="px-4 py-1 border-t border-gray-200 bg-gray-50 shrink-0">
-        <p className="text-[10px] text-gray-400">Klik → zgjidh objekt  •  Klik i djathtë → pozicionohu në hartë  •  Esc mbyll</p>
+        <p className="text-[10px] text-gray-400">Klik → zgjidh  •  Ctrl+Klik → shto/hiq  •  Shift+Klik → interval  •  Klik i djathtë → zoom  •  Esc mbyll</p>
       </div>
     </div>
   )
