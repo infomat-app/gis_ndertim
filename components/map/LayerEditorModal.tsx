@@ -113,6 +113,15 @@ export default function LayerEditorModal({ layer, onSave, onClose }: Props) {
   const removeField = (i: number) =>
     setFields(prev => prev.filter((_, idx) => idx !== i))
 
+  const moveField = (i: number, dir: -1 | 1) =>
+    setFields(prev => {
+      const next = [...prev]
+      const j = i + dir
+      if (j < 0 || j >= next.length) return prev
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return next
+    })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -299,6 +308,16 @@ export default function LayerEditorModal({ layer, onSave, onClose }: Props) {
                 {fields.map((f, i) => (
                   <div key={i} className="bg-s2 border border-b1 rounded-xl p-3 space-y-2">
                     <div className="flex gap-2">
+                      <div className="flex flex-col gap-0.5 justify-center">
+                        <button type="button" onClick={() => moveField(i, -1)} disabled={i === 0}
+                          className="p-0.5 text-txt3 hover:text-txt disabled:opacity-20 transition-colors">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                        </button>
+                        <button type="button" onClick={() => moveField(i, 1)} disabled={i === fields.length - 1}
+                          className="p-0.5 text-txt3 hover:text-txt disabled:opacity-20 transition-colors">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                      </div>
                       <div className="flex-1">
                         <label className="text-[10px] text-txt3 font-mono">Etiketa</label>
                         <input
