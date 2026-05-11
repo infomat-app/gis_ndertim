@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase'
 import type { Layer, Feature, Profile, GeoJSONGeometry } from '@/lib/types'
@@ -136,16 +136,27 @@ export default function MapPage({ profile }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers.map(l => `${l.id}:${l.visible}`).join(',')])
 
+  // Pending point marker position for MapView (lat, lng in Leaflet order)
+  const pendingMapPoint = useMemo<[number, number] | null>(() => {
+    if (!showFeatureForm || pendingGeom?.type !== 'Point') return null
+    const [lng, lat] = pendingGeom.coordinates as [number, number]
+    return [lat, lng]
+  }, [showFeatureForm, pendingGeom])
+
+  const handlePendingPointDrag = useCallback((lat: number, lng: number) => {
+    setPendingGeom({ type: 'Point', coordinates: [lng, lat] })
+  }, [])
+
   // -------- Map event handlers --------
   const handleMapClick = useCallback((lat: number, lng: number) => {
-    if (!activeLayer || !canEdit) return
+    if (!activeLayer || !canEdit || showFeatureForm) return
     if (activeLayer.geom_type === 'Point') {
       setPendingGeom({ type: 'Point', coordinates: [lng, lat] })
       setShowFeatureForm(true)
     } else {
       setDrawingCoords(prev => [...prev, [lat, lng]])
     }
-  }, [activeLayer, canEdit])
+  }, [activeLayer, canEdit, showFeatureForm])
 
   const handleMapDblClick = useCallback(() => {
     if (!activeLayer || !canEdit) return
@@ -625,6 +636,8 @@ export default function MapPage({ profile }: Props) {
             selectedFeatureIds={mapSelectedIds.size > 0 ? mapSelectedIds : undefined}
             selectedFeature={selectedFeature}
             onGeometryUpdate={selectedFeature && canEditLayer(selectedFeature.layer_id) ? handleGeometryUpdate : undefined}
+            pendingPoint={pendingMapPoint}
+            onPendingPointDrag={handlePendingPointDrag}
             onZoomDone={() => { setZoomRequest(null); setZoomFeature(null) }}
             onMapClick={handleMapClick}
             onMapDblClick={handleMapDblClick}

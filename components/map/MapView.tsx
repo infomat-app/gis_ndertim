@@ -35,6 +35,13 @@ function svgShape(color: string, style: PointStyle, sw: number): string {
   }
 }
 
+function pendingPointIcon(color: string, style: PointStyle = 'circle', baseSize = 16) {
+  const size = Math.round((baseSize + 6) * 1.15)
+  const html = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 16 16"
+    style="filter:drop-shadow(0 0 10px ${color})drop-shadow(0 0 5px ${color})drop-shadow(0 3px 8px rgba(0,0,0,0.55));opacity:0.93">${svgShape(color, style, 2)}</svg>`
+  return L.divIcon({ className: '', html, iconSize: [size, size], iconAnchor: [size / 2, size / 2] })
+}
+
 function pointIcon(color: string, style: PointStyle = 'circle', selected = false, baseSize = 16) {
   const size = selected ? Math.round(baseSize * 1.375) : baseSize
   const sw   = selected ? 2 : 1.5
@@ -359,6 +366,8 @@ interface Props {
   onGPSCapture: (lat: number, lng: number) => void
   onFeatureClick: (f: Feature) => void
   onGeometryUpdate?: (featureId: string, newGeom: GeoJSONGeometry) => void
+  pendingPoint?: [number, number] | null
+  onPendingPointDrag?: (lat: number, lng: number) => void
   // Tool props
   activeTool?: MapTool | null
   measurePts?: [number, number][]
@@ -377,6 +386,7 @@ export default function MapView({
   selectedFeatureId, selectedFeatureIds, selectedFeature,
   onZoomDone, onMapClick, onMapDblClick, onGPSCapture,
   onFeatureClick, onGeometryUpdate,
+  pendingPoint = null, onPendingPointDrag,
   activeTool = null,
   measurePts = [],
   bufferCenter = null,
@@ -510,6 +520,26 @@ export default function MapView({
             <Marker key={i} position={coord} icon={vertexIcon(i === 0)} />
           ))}
         </>
+      )}
+
+      {/* Pending point marker — draggable, shown while feature form is open */}
+      {pendingPoint && activeLayer && (
+        <Marker
+          position={pendingPoint}
+          icon={pendingPointIcon(activeLayer.color, activeLayer.point_style ?? 'circle', activeLayer.point_size ?? 16)}
+          draggable={true}
+          zIndexOffset={2000}
+          eventHandlers={{
+            dragend: (e) => {
+              const pos = (e.target as L.Marker).getLatLng()
+              onPendingPointDrag?.(pos.lat, pos.lng)
+            },
+          }}
+        >
+          <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
+            <span className="text-xs">Tërhiq për të ndryshuar pozicionin</span>
+          </Tooltip>
+        </Marker>
       )}
 
       {/* Vertex editing handles for selected LineString / Polygon */}
