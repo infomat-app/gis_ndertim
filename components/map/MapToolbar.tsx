@@ -5,9 +5,12 @@ export type MapTool = 'select' | 'xy' | 'measure-dist' | 'measure-area' | 'buffe
 interface Props {
   activeTool: MapTool | null
   onSelectTool: (tool: MapTool | null) => void
+  filterOpen?: boolean
+  filterCount?: number
+  onToggleFilter?: () => void
 }
 
-export default function MapToolbar({ activeTool, onSelectTool }: Props) {
+export default function MapToolbar({ activeTool, onSelectTool, filterOpen, filterCount, onToggleFilter }: Props) {
   const tools: { id: MapTool; title: string; svg: React.ReactNode }[] = [
     {
       id: 'select',
@@ -92,6 +95,29 @@ export default function MapToolbar({ activeTool, onSelectTool }: Props) {
           {t.svg}
         </button>
       ))}
+
+      {/* Separator + Filter button */}
+      <div className="h-px bg-b1 mx-1 my-0.5"/>
+      <button
+        title="Filtri i Hartës"
+        onClick={onToggleFilter}
+        className={`relative w-8 h-8 flex items-center justify-center rounded-lg transition-all active:scale-95 ${
+          filterOpen
+            ? 'bg-acc text-white shadow-sm'
+            : filterCount
+              ? 'text-acc hover:bg-s2'
+              : 'text-txt2 hover:bg-s2 hover:text-txt'
+        }`}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+        </svg>
+        {(filterCount ?? 0) > 0 && !filterOpen && (
+          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-acc text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
+            {filterCount}
+          </span>
+        )}
+      </button>
     </div>
   )
 }

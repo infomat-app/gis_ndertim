@@ -12,6 +12,7 @@ import FeatureDetail from './FeatureDetail'
 import LayerEditorModal from './LayerEditorModal'
 import ImportModal, { type GeoJSONFeature } from './ImportModal'
 import AttributeTableModal from './AttributeTableModal'
+import FilterPanel, { type LayerFilter, testCondition } from './FilterPanel'
 import { exportGeoJSON, exportCSV, exportXLS, exportKML, exportShapefile, exportMultiCSV, exportMultiXLS } from '@/lib/exports'
 import type { LayerPermLevel } from '@/lib/types'
 
@@ -61,6 +62,26 @@ export default function MapPage({ profile }: Props) {
   const [xyLng,         setXYLng]         = useState('')
   const [xyFlyTrigger,  setXYFlyTrigger]  = useState(0)
   const [infoFeatures,  setInfoFeatures]  = useState<Array<{ feature: Feature; layer: Layer }>>([])
+
+  // ---- Filter state ----
+  const [filterOpen,    setFilterOpen]   = useState(false)
+  const [layerFilters,  setLayerFilters] = useState<Record<string, LayerFilter>>({})
+
+  const filteredFeatures = useMemo(() => {
+    const activeIds = Object.keys(layerFilters).filter(id => layerFilters[id].conditions.length > 0)
+    if (activeIds.length === 0) return features
+    const result = { ...features }
+    for (const layerId of activeIds) {
+      const f = layerFilters[layerId]
+      result[layerId] = (features[layerId] ?? []).filter(feat => {
+        const tests = f.conditions.map(c => testCondition(feat.properties, c))
+        return f.logic === 'AND' ? tests.every(Boolean) : tests.some(Boolean)
+      })
+    }
+    return result
+  }, [features, layerFilters])
+
+  const totalFilterCount = Object.values(layerFilters).reduce((s, f) => s + f.conditions.length, 0)
 
   // Auto-open sidebar on desktop
   useEffect(() => {
@@ -384,14 +405,14 @@ export default function MapPage({ profile }: Props) {
       const tol = 0.001
       const found: Array<{ feature: Feature; layer: Layer }> = []
       layers.filter(l => l.visible && canViewLayer(l.id)).forEach(l => {
-        ;(features[l.id] ?? []).forEach(f => {
+        ;(filteredFeatures[l.id] ?? []).forEach(f => {
           if (pointNearGeom(f.geometry, lat, lng, tol)) found.push({ feature: f, layer: l })
         })
       })
       setInfoFeatures(found)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, layers, features])
+  }, [activeTool, layers, filteredFeatures])
 
   const handleXYGo = () => {
     const lat = parseFloat(xyLat), lng = parseFloat(xyLng)
@@ -433,7 +454,24 @@ export default function MapPage({ profile }: Props) {
         {/* Map */}
         <div className="flex-1 relative overflow-hidden">
           {/* Map tools toolbar */}
-          <MapToolbar activeTool={activeTool} onSelectTool={handleToolSelect}/>
+          <MapToolbar
+            activeTool={activeTool}
+            onSelectTool={handleToolSelect}
+            filterOpen={filterOpen}
+            filterCount={totalFilterCount}
+            onToggleFilter={() => setFilterOpen(o => !o)}
+          />
+
+          {/* Filter panel */}
+          {filterOpen && (
+            <FilterPanel
+              layers={layers.filter(l => canViewLayer(l.id))}
+              features={features}
+              layerFilters={layerFilters}
+              onFiltersChange={setLayerFilters}
+              onClose={() => setFilterOpen(false)}
+            />
+          )}
 
           {/* XY panel */}
           {activeTool === 'xy' && (
@@ -538,7 +576,7 @@ export default function MapPage({ profile }: Props) {
                 <>
                   <button
                     onClick={() => {
-                      const allFeats = Object.values(features).flat()
+                      const allFeats = Object.values(filteredFeatures).flat()
                       const sel = allFeats.filter(f => mapSelectedIds.has(f.id))
                       const lmap = new Map(layers.map(l => [l.id, l]))
                       exportMultiCSV(lmap, sel)
@@ -550,7 +588,7 @@ export default function MapPage({ profile }: Props) {
                   </button>
                   <button
                     onClick={async () => {
-                      const allFeats = Object.values(features).flat()
+                      const allFeats = Object.values(filteredFeatures).flat()
                       const sel = allFeats.filter(f => mapSelectedIds.has(f.id))
                       const lmap = new Map(layers.map(l => [l.id, l]))
                       await exportMultiXLS(lmap, sel)
@@ -626,7 +664,7 @@ export default function MapPage({ profile }: Props) {
           )}
           <MapView
             layers={layers.filter(l => canViewLayer(l.id))}
-            features={features}
+            features={filteredFeatures}
             activeLayer={activeLayer}
             drawingCoords={drawingCoords}
             gpsRequest={gpsRequest}
@@ -774,7 +812,7 @@ export default function MapPage({ profile }: Props) {
       {attrLayer && (
         <AttributeTableModal
           layer={attrLayer}
-          features={features[attrLayer.id] ?? []}
+          features={filteredFeatures[attrLayer.id] ?? []}
           canEditFeature={canEditFeature}
           onClose={() => setAttrLayer(null)}
           onSelectFeature={f => setSelectedFeature(f)}
